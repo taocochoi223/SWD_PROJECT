@@ -207,3 +207,6 @@ MigrationBackup/
 # IoT Simulator large CSV files
 IoT_Simulator/*.csv
 IoT_Simulator/weather-*.csv
+
+# Ignore Development settings (contains secrets)
+**/appsettings.Development.json
