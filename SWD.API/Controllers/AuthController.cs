@@ -74,7 +74,7 @@ namespace SWD.API.Controllers
             var newUser = new User
             {
                 OrgId = request.OrgId,
-                SiteId = request.SiteId,
+                SiteId = (request.SiteId == 0) ? null : request.SiteId,
                 FullName = request.FullName ?? string.Empty,
                 Email = request.Email ?? string.Empty,
                 PasswordHash = hashedPassword,
