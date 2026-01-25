@@ -50,7 +50,16 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // 1. Đăng ký DB Context
-builder.Services.AddDbContext<IoTFinalDbContext>();
+//builder.Services.AddDbContext<IoTFinalDbContext>();
+// 1. Đăng ký DB Context (DÙNG ENV Connection String)
+builder.Services.AddDbContext<IoTFinalDbContext>(options =>
+{
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sql => sql.EnableRetryOnFailure()
+    );
+});
+
 
 // 2. Đăng ký Repositories (DAL)
 builder.Services.AddScoped<ISensorRepository, SensorRepository>();
