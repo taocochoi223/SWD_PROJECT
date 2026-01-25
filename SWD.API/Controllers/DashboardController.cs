@@ -34,20 +34,28 @@ namespace SWD.API.Controllers
         [HttpGet("stats")]
         public async Task<IActionResult> GetStatsAsync()
         {
-            var sites = await _siteService.GetAllSitesAsync();
-            var hubs = await _hubService.GetAllHubsAsync();
-            var sensors = await _sensorService.GetAllSensorsAsync();
-            var alerts = await _alertService.GetAlertsWithFiltersAsync("Active", null);
-
-            var stats = new
+            try
             {
-                total_sites = sites.Count,
-                total_hubs = hubs.Count,
-                active_sensors = sensors.Count(s => s.Status == "Active"),
-                pending_alerts = alerts.Count
-            };
+                var sites = await _siteService.GetAllSitesAsync();
+                var hubs = await _hubService.GetAllHubsAsync();
+                var sensors = await _sensorService.GetAllSensorsAsync();
+                var alerts = await _alertService.GetAlertsWithFiltersAsync("Active", null);
 
-            return Ok(stats);
+                var stats = new
+                {
+                    message = "Lấy thống kê dashboard thành công",
+                    total_sites = sites.Count,
+                    total_hubs = hubs.Count,
+                    active_sensors = sensors.Count(s => s.Status == "Active"),
+                    pending_alerts = alerts.Count
+                };
+
+                return Ok(stats);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy thống kê: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -56,34 +64,41 @@ namespace SWD.API.Controllers
         [HttpGet("hierarchy")]
         public async Task<IActionResult> GetHierarchyAsync()
         {
-            var sites = await _siteService.GetSiteHierarchyAsync();
-            
-            var siteDtos = sites.Select(s => new SiteDashboardDto
+            try
             {
-                SiteId = s.SiteId,
-                Name = s.Name,
-                Address = s.Address,
-                Hubs = s.Hubs?.Select(h => new HubDashboardDto
+                var sites = await _siteService.GetSiteHierarchyAsync();
+                
+                var siteDtos = sites.Select(s => new SiteDashboardDto
                 {
-                    HubId = h.HubId,
-                    Name = h.Name,
-                    MacAddress = h.MacAddress,
-                    IsOnline = h.IsOnline,
-                    LastHandshake = h.LastHandshake,
-                    Sensors = h.Sensors?.Select(se => new SensorDashboardDto
+                    SiteId = s.SiteId,
+                    Name = s.Name,
+                    Address = s.Address,
+                    Hubs = s.Hubs?.Select(h => new HubDashboardDto
                     {
-                        SensorId = se.SensorId,
-                        Name = se.Name,
-                        TypeName = se.Type?.TypeName ?? "Unknown",
-                        Unit = se.Type?.Unit ?? "",
-                        CurrentValue = (float?)se.CurrentValue,
-                        LastUpdate = se.LastUpdate,
-                        TotalReadings = se.Readings?.Count ?? 0
-                    }).ToList() ?? new List<SensorDashboardDto>()
-                }).ToList() ?? new List<HubDashboardDto>()
-            }).ToList();
+                        HubId = h.HubId,
+                        Name = h.Name,
+                        MacAddress = h.MacAddress,
+                        IsOnline = h.IsOnline,
+                        LastHandshake = h.LastHandshake,
+                        Sensors = h.Sensors?.Select(se => new SensorDashboardDto
+                        {
+                            SensorId = se.SensorId,
+                            Name = se.Name,
+                            TypeName = se.Type?.TypeName ?? "Unknown",
+                            Unit = se.Type?.Unit ?? "",
+                            CurrentValue = (float?)se.CurrentValue,
+                            LastUpdate = se.LastUpdate,
+                            TotalReadings = se.Readings?.Count ?? 0
+                        }).ToList() ?? new List<SensorDashboardDto>()
+                    }).ToList() ?? new List<HubDashboardDto>()
+                }).ToList();
 
-            return Ok(siteDtos);
+                return Ok(new { message = "Lấy cấu trúc phân cấp thành công", data = siteDtos });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy cấu trúc phân cấp: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -92,38 +107,45 @@ namespace SWD.API.Controllers
         [HttpGet("site/{siteId}")]
         public async Task<IActionResult> GetHierarchyBySiteIdAsync(int siteId)
         {
-            var s = await _siteService.GetSiteHierarchyByIdAsync(siteId);
-            if (s == null)
+            try
             {
-                return NotFound(new { message = "Site not found" });
-            }
-
-            var siteDto = new SiteDashboardDto
-            {
-                SiteId = s.SiteId,
-                Name = s.Name,
-                Address = s.Address,
-                Hubs = s.Hubs?.Select(h => new HubDashboardDto
+                var s = await _siteService.GetSiteHierarchyByIdAsync(siteId);
+                if (s == null)
                 {
-                    HubId = h.HubId,
-                    Name = h.Name,
-                    MacAddress = h.MacAddress,
-                    IsOnline = h.IsOnline,
-                    LastHandshake = h.LastHandshake,
-                    Sensors = h.Sensors?.Select(se => new SensorDashboardDto
-                    {
-                        SensorId = se.SensorId,
-                        Name = se.Name,
-                        TypeName = se.Type?.TypeName ?? "Unknown",
-                        Unit = se.Type?.Unit ?? "",
-                        CurrentValue = (float?)se.CurrentValue,
-                        LastUpdate = se.LastUpdate,
-                        TotalReadings = se.Readings?.Count ?? 0
-                    }).ToList() ?? new List<SensorDashboardDto>()
-                }).ToList() ?? new List<HubDashboardDto>()
-            };
+                    return NotFound(new { message = "Không tìm thấy địa điểm với ID: " + siteId });
+                }
 
-            return Ok(siteDto);
+                var siteDto = new SiteDashboardDto
+                {
+                    SiteId = s.SiteId,
+                    Name = s.Name,
+                    Address = s.Address,
+                    Hubs = s.Hubs?.Select(h => new HubDashboardDto
+                    {
+                        HubId = h.HubId,
+                        Name = h.Name,
+                        MacAddress = h.MacAddress,
+                        IsOnline = h.IsOnline,
+                        LastHandshake = h.LastHandshake,
+                        Sensors = h.Sensors?.Select(se => new SensorDashboardDto
+                        {
+                            SensorId = se.SensorId,
+                            Name = se.Name,
+                            TypeName = se.Type?.TypeName ?? "Unknown",
+                            Unit = se.Type?.Unit ?? "",
+                            CurrentValue = (float?)se.CurrentValue,
+                            LastUpdate = se.LastUpdate,
+                            TotalReadings = se.Readings?.Count ?? 0
+                        }).ToList() ?? new List<SensorDashboardDto>()
+                    }).ToList() ?? new List<HubDashboardDto>()
+                };
+
+                return Ok(new { message = "Lấy thông tin dashboard theo địa điểm thành công", data = siteDto });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy thông tin dashboard: " + ex.Message });
+            }
         }
     }
 }

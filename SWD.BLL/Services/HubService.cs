@@ -52,5 +52,10 @@ namespace SWD.BLL.Services
         {
              return await _hubRepo.GetHubWithReadingsAsync(hubId, from, to);
         }
+
+        public async Task<List<Sensor>> GetHubCurrentTemperatureAsync(int hubId)
+        {
+            return await _hubRepo.GetHubTemperatureSensorsAsync(hubId);
+        }
     }
 }

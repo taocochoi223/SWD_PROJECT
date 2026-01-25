@@ -27,17 +27,29 @@ namespace SWD.API.Controllers
         [Authorize(Roles = "Admin,ADMIN")]
         public async Task<IActionResult> GetAllOrganizationsAsync()
         {
-            var orgs = await _organizationService.GetAllOrganizationsAsync();
-            var orgDtos = orgs.Select(o => new OrganizationDto
+            try
             {
-                OrgId = o.OrgId,
-                Name = o.Name,
-                Description = o.Description,
-                CreatedAt = o.CreatedAt,
-                SiteCount = o.Sites?.Count ?? 0
-            }).ToList();
+                var orgs = await _organizationService.GetAllOrganizationsAsync();
+                var orgDtos = orgs.Select(o => new OrganizationDto
+                {
+                    OrgId = o.OrgId,
+                    Name = o.Name,
+                    Description = o.Description,
+                    CreatedAt = o.CreatedAt,
+                    SiteCount = o.Sites?.Count ?? 0
+                }).ToList();
 
-            return Ok(orgDtos);
+                return Ok(new
+                {
+                    message = "Lấy danh sách tổ chức thành công",
+                    count = orgDtos.Count,
+                    data = orgDtos
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy danh sách tổ chức: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -47,20 +59,27 @@ namespace SWD.API.Controllers
         [Authorize(Roles = "Admin,ADMIN")]
         public async Task<IActionResult> GetOrganizationByIdAsync(int id)
         {
-            var org = await _organizationService.GetOrganizationByIdAsync(id);
-            if (org == null)
-                return NotFound(new { message = "Organization not found" });
-
-            var orgDto = new OrganizationDto
+            try
             {
-                OrgId = org.OrgId,
-                Name = org.Name,
-                Description = org.Description,
-                CreatedAt = org.CreatedAt,
-                SiteCount = org.Sites?.Count ?? 0
-            };
+                var org = await _organizationService.GetOrganizationByIdAsync(id);
+                if (org == null)
+                    return NotFound(new { message = "Không tìm thấy tổ chức với ID: " + id });
 
-            return Ok(orgDto);
+                var orgDto = new OrganizationDto
+                {
+                    OrgId = org.OrgId,
+                    Name = org.Name,
+                    Description = org.Description,
+                    CreatedAt = org.CreatedAt,
+                    SiteCount = org.Sites?.Count ?? 0
+                };
+
+                return Ok(new { message = "Lấy thông tin tổ chức thành công", data = orgDto });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy thông tin tổ chức: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -70,24 +89,34 @@ namespace SWD.API.Controllers
         [Authorize(Roles = "Admin,ADMIN")]
         public async Task<IActionResult> CreateOrganizationAsync([FromBody] CreateOrganizationDto request)
         {
-            var org = new Organization
+            try
             {
-                Name = request.Name,
-                Description = request.Description
-            };
+                if (string.IsNullOrWhiteSpace(request.Name))
+                    return BadRequest(new { message = "Tên tổ chức không được để trống" });
 
-            var createdOrg = await _organizationService.CreateOrganizationAsync(org);
+                var org = new Organization
+                {
+                    Name = request.Name,
+                    Description = request.Description
+                };
 
-            var orgDto = new OrganizationDto
+                var createdOrg = await _organizationService.CreateOrganizationAsync(org);
+
+                var orgDto = new OrganizationDto
+                {
+                    OrgId = createdOrg.OrgId,
+                    Name = createdOrg.Name,
+                    Description = createdOrg.Description,
+                    CreatedAt = createdOrg.CreatedAt,
+                    SiteCount = 0
+                };
+
+                return Ok(new { message = "Tạo tổ chức thành công", data = orgDto });
+            }
+            catch (Exception ex)
             {
-                OrgId = createdOrg.OrgId,
-                Name = createdOrg.Name,
-                Description = createdOrg.Description,
-                CreatedAt = createdOrg.CreatedAt,
-                SiteCount = 0
-            };
-
-            return CreatedAtAction(nameof(GetOrganizationByIdAsync), new { id = createdOrg.OrgId }, orgDto);
+                return BadRequest(new { message = "Lỗi khi tạo tổ chức: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -97,19 +126,26 @@ namespace SWD.API.Controllers
         [Authorize(Roles = "Admin,ADMIN")]
         public async Task<IActionResult> UpdateOrganizationAsync(int id, [FromBody] UpdateOrganizationDto request)
         {
-            var existingOrg = await _organizationService.GetOrganizationByIdAsync(id);
-            if (existingOrg == null)
-                return NotFound(new { message = "Organization not found" });
+            try
+            {
+                var existingOrg = await _organizationService.GetOrganizationByIdAsync(id);
+                if (existingOrg == null)
+                    return NotFound(new { message = "Không tìm thấy tổ chức với ID: " + id });
 
-            if (!string.IsNullOrEmpty(request.Name))
-                existingOrg.Name = request.Name;
-            
-            if (request.Description != null)
-                existingOrg.Description = request.Description;
+                if (!string.IsNullOrEmpty(request.Name))
+                    existingOrg.Name = request.Name;
+                
+                if (request.Description != null)
+                    existingOrg.Description = request.Description;
 
-            await _organizationService.UpdateOrganizationAsync(existingOrg);
+                await _organizationService.UpdateOrganizationAsync(existingOrg);
 
-            return Ok(new { message = "Organization updated successfully", orgId = id });
+                return Ok(new { message = "Cập nhật tổ chức thành công", orgId = id });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi cập nhật tổ chức: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -119,13 +155,20 @@ namespace SWD.API.Controllers
         [Authorize(Roles = "Admin,ADMIN")]
         public async Task<IActionResult> DeleteOrganizationAsync(int id)
         {
-            var existingOrg = await _organizationService.GetOrganizationByIdAsync(id);
-            if (existingOrg == null)
-                return NotFound(new { message = "Organization not found" });
+            try
+            {
+                var existingOrg = await _organizationService.GetOrganizationByIdAsync(id);
+                if (existingOrg == null)
+                    return NotFound(new { message = "Không tìm thấy tổ chức với ID: " + id });
 
-            await _organizationService.DeleteOrganizationAsync(id);
+                await _organizationService.DeleteOrganizationAsync(id);
 
-            return Ok(new { message = "Organization deleted successfully", orgId = id });
+                return Ok(new { message = "Xóa tổ chức thành công", orgId = id });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi xóa tổ chức: " + ex.Message });
+            }
         }
     }
 }

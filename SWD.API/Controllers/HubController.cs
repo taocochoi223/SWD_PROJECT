@@ -13,7 +13,7 @@ namespace SWD.API.Controllers
     {
         private readonly IHubService _hubService;
 
-        public HubController( IHubService hubService)
+        public HubController(IHubService hubService)
         {
             _hubService = hubService;
         }
@@ -23,19 +23,31 @@ namespace SWD.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllHubsAsync()
         {
-            var hubs = await _hubService.GetAllHubsAsync();
-            var hubDtos = hubs.Select(h => new HubDto
+            try
             {
-                HubId = h.HubId,
-                Name = h.Name,
-                MacAddress = h.MacAddress,
-                IsOnline = h.IsOnline,
-                LastHandshake = h.LastHandshake,
-                SiteId = h.SiteId,
-                SiteName = h.Site?.Name ?? "Unassigned",
-                SensorCount = h.Sensors?.Count ?? 0
-            }).ToList();
-            return Ok(hubDtos);
+                var hubs = await _hubService.GetAllHubsAsync();
+                var hubDtos = hubs.Select(h => new HubDto
+                {
+                    HubId = h.HubId,
+                    Name = h.Name,
+                    MacAddress = h.MacAddress,
+                    IsOnline = h.IsOnline,
+                    LastHandshake = h.LastHandshake,
+                    SiteId = h.SiteId,
+                    SiteName = h.Site?.Name ?? "Unassigned",
+                    SensorCount = h.Sensors?.Count ?? 0
+                }).ToList();
+                return Ok(new
+                {
+                    message = "Lấy danh sách Hub thành công",
+                    count = hubDtos.Count,
+                    data = hubDtos
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy danh sách Hub: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -43,21 +55,33 @@ namespace SWD.API.Controllers
         /// </summary>
         [HttpGet("{id}")]
         public async Task<IActionResult> GetHubByIdAsync(int id){
-            var hub = await _hubService.GetHubByIdAsync(id);
-            if (hub == null)
-                return NotFound(new { message = "Hub not found" });
-            var hubDto = new HubDto
+            try
             {
-                HubId = hub.HubId,
-                Name = hub.Name,
-                MacAddress = hub.MacAddress,
-                IsOnline = hub.IsOnline,
-                LastHandshake = hub.LastHandshake,
-                SiteId = hub.SiteId,
-                SiteName = hub.Site?.Name ?? "Unassigned",
-                SensorCount = hub.Sensors?.Count ?? 0
-            };
-            return Ok(hubDto);
+                var hub = await _hubService.GetHubByIdAsync(id);
+                if (hub == null)
+                    return NotFound(new { message = "Không tìm thấy Hub với ID: " + id });
+                
+                var hubDto = new HubDto
+                {
+                    HubId = hub.HubId,
+                    Name = hub.Name,
+                    MacAddress = hub.MacAddress,
+                    IsOnline = hub.IsOnline,
+                    LastHandshake = hub.LastHandshake,
+                    SiteId = hub.SiteId,
+                    SiteName = hub.Site?.Name ?? "Unassigned",
+                    SensorCount = hub.Sensors?.Count ?? 0
+                };
+                return Ok(new
+                {
+                    message = "Lấy thông tin Hub thành công",
+                    data = hubDto
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy thông tin Hub: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -67,36 +91,48 @@ namespace SWD.API.Controllers
         [Authorize(Roles = "Admin,ADMIN,Manager,MANAGER")]
         public async Task<IActionResult> CreateHubAsync([FromBody] RegisterHubDto request)
         {
-            var ex = await _hubService.GetHubByMacAsync(request.MacAddress);
-            if (ex != null)
+            try
             {
-                return BadRequest(new { message = "Hub with the same MAC address already exists." });
-            }
+                if (string.IsNullOrWhiteSpace(request.Name))
+                    return BadRequest(new { message = "Tên Hub không được để trống" });
 
-            var hub = new Hub
-            {
-                SiteId = request.SiteId,
-                Name = request.Name,
-                MacAddress = request.MacAddress,
-                IsOnline = false 
-            };
+                if (string.IsNullOrWhiteSpace(request.MacAddress))
+                    return BadRequest(new { message = "Địa chỉ MAC không được để trống" });
 
-            await _hubService.CreateHubAsync(hub);
-
-            // Thay CreatedAtAction bằng Ok
-            return Ok(new
-            {
-                message = "Hub created successfully",
-                hub = new HubDto
+                var ex = await _hubService.GetHubByMacAsync(request.MacAddress);
+                if (ex != null)
                 {
-                    HubId = hub.HubId,
-                    Name = hub.Name,
-                    MacAddress = hub.MacAddress,
-                    IsOnline = hub.IsOnline,
-                    SiteId = hub.SiteId,
-                    SensorCount = 0
+                    return BadRequest(new { message = "Hub với địa chỉ MAC này đã tồn tại" });
                 }
-            });
+
+                var hub = new Hub
+                {
+                    SiteId = request.SiteId,
+                    Name = request.Name,
+                    MacAddress = request.MacAddress,
+                    IsOnline = false 
+                };
+
+                await _hubService.CreateHubAsync(hub);
+
+                return Ok(new
+                {
+                    message = "Tạo Hub thành công",
+                    hub = new HubDto
+                    {
+                        HubId = hub.HubId,
+                        Name = hub.Name,
+                        MacAddress = hub.MacAddress,
+                        IsOnline = hub.IsOnline,
+                        SiteId = hub.SiteId,
+                        SensorCount = 0
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi tạo Hub: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -106,21 +142,30 @@ namespace SWD.API.Controllers
         [Authorize(Roles = "Admin,ADMIN,Manager,MANAGER")]
         public async Task<IActionResult> UpdateHubAsync(int id, [FromBody] UpdateHubDto request)
         {
-            var existingHub = await _hubService.GetHubByIdAsync(id);
-            if (existingHub == null)
-                return NotFound(new { message = "Hub not found" });
+            try
+            {
+                var existingHub = await _hubService.GetHubByIdAsync(id);
+                if (existingHub == null)
+                    return NotFound(new { message = "Không tìm thấy Hub với ID: " + id });
 
-            if (request.SiteId.HasValue)
-                existingHub.SiteId = request.SiteId.Value;
+                if (request.SiteId.HasValue)
+                    existingHub.SiteId = request.SiteId.Value;
 
-            if (!string.IsNullOrEmpty(request.Name))
-                existingHub.Name = request.Name;
+                if (!string.IsNullOrEmpty(request.Name))
+                    existingHub.Name = request.Name;
 
-            await _hubService.UpdateHubAsync(existingHub);
-            return Ok(new 
-            { 
-                message = "Hub updated successfully", hubId = existingHub.HubId 
-            });
+                await _hubService.UpdateHubAsync(existingHub);
+                return Ok(new 
+                { 
+                    message = "Cập nhật Hub thành công", 
+                    hubId = existingHub.HubId,
+                    name = existingHub.Name
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi cập nhật Hub: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -130,16 +175,25 @@ namespace SWD.API.Controllers
         [Authorize(Roles = "Admin,ADMIN,Manager,MANAGER")]
         public async Task<IActionResult> DeleteHubAsync(int id)
         {
-            var existingHub = await _hubService.GetHubByIdAsync(id);
-            if (existingHub == null)
-                return NotFound(new { message = "Hub not found" });
+            try
+            {
+                var existingHub = await _hubService.GetHubByIdAsync(id);
+                if (existingHub == null)
+                    return NotFound(new { message = "Không tìm thấy Hub với ID: " + id });
 
-            await _hubService.DeleteHubAsync(id);
+                await _hubService.DeleteHubAsync(id);
 
-            return Ok(new 
-            { 
-                message = "Hub deleted successfully", hubId = id 
-            });
+                return Ok(new 
+                { 
+                    message = "Xóa Hub thành công", 
+                    hubId = id,
+                    name = existingHub.Name
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi xóa Hub: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -148,31 +202,86 @@ namespace SWD.API.Controllers
         [HttpGet("{id}/readings")]
         public async Task<IActionResult> GetHubReadingsAsync(int id, [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null)
         {
-            var hub = await _hubService.GetHubWithReadingsAsync(id, from, to);
-
-            if (hub == null)
-                return NotFound(new { message = "Hub not found" });
-
-            var result = new HubReadingsDto
+            try
             {
-                HubId = hub.HubId,
-                Name = hub.Name,
-                MacAddress = hub.MacAddress,
-                Sensors = hub.Sensors?.Select(s => new SensorReadingDto
-                {
-                    SensorId = s.SensorId,
-                    Name = s.Name,
-                    TypeName = s.Type?.TypeName ?? "Unknown",
-                    Unit = s.Type?.Unit ?? "",
-                    Readings = s.Readings?.Select(r => new ReadingValueDto
-                    {
-                        RecordedAt = r.RecordedAt ?? DateTime.MinValue,
-                        Value = (float)r.Value
-                    }).OrderByDescending(r => r.RecordedAt).ToList() ?? new List<ReadingValueDto>()
-                }).ToList() ?? new List<SensorReadingDto>()
-            };
+                var hub = await _hubService.GetHubWithReadingsAsync(id, from, to);
 
-            return Ok(result);
+                if (hub == null)
+                    return NotFound(new { message = "Không tìm thấy Hub với ID: " + id });
+
+                var result = new HubReadingsDto
+                {
+                    HubId = hub.HubId,
+                    Name = hub.Name,
+                    MacAddress = hub.MacAddress,
+                    Sensors = hub.Sensors?.Select(s => new SensorReadingDto
+                    {
+                        SensorId = s.SensorId,
+                        Name = s.Name,
+                        TypeName = s.Type?.TypeName ?? "Unknown",
+                        Unit = s.Type?.Unit ?? "",
+                        Readings = s.Readings?.Select(r => new ReadingValueDto
+                        {
+                            RecordedAt = r.RecordedAt ?? DateTime.MinValue,
+                            Value = (float)r.Value
+                        }).OrderByDescending(r => r.RecordedAt).ToList() ?? new List<ReadingValueDto>()
+                    }).ToList() ?? new List<SensorReadingDto>()
+                };
+
+                return Ok(new
+                {
+                    message = "Lấy dữ liệu đo của Hub thành công",
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy dữ liệu đo của Hub: " + ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get Current Temperature - Lấy dữ liệu môi trường hiện tại của Hub (Temperature, Humidity, Pressure)
+        /// </summary>
+        [HttpGet("{id}/current-temperature")]
+        public async Task<IActionResult> GetCurrentTemperatureAsync(int id)
+        {
+            try
+            {
+                var hub = await _hubService.GetHubByIdAsync(id);
+                if (hub == null)
+                    return NotFound(new { message = "Không tìm thấy Hub với ID: " + id });
+
+                // Lấy environment sensors từ Service (Temperature, Humidity, Pressure)
+                var envSensors = await _hubService.GetHubCurrentTemperatureAsync(id);
+
+                if (!envSensors.Any())
+                    return NotFound(new { message = "Hub này không có cảm biến môi trường (Temperature/Humidity/Pressure)" });
+
+                var environmentData = envSensors.Select(s => new
+                {
+                    sensorId = s.SensorId,
+                    sensorName = s.Name,
+                    typeName = s.Type?.TypeName,
+                    currentValue = s.CurrentValue,
+                    unit = s.Type?.Unit ?? "",
+                    lastUpdate = s.LastUpdate,
+                    status = s.Status
+                }).ToList();
+
+                return Ok(new
+                {
+                    message = "Lấy dữ liệu môi trường hiện tại của Hub thành công",
+                    hubId = id,
+                    hubName = hub.Name,
+                    sensorCount = environmentData.Count,
+                    data = environmentData
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy dữ liệu môi trường: " + ex.Message });
+            }
         }
     }
 }

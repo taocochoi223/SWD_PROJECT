@@ -26,35 +26,47 @@ namespace SWD.API.Controllers
             [FromQuery] int? hub_id = null,
             [FromQuery] int? type = null)
         {
-            List<Sensor> sensors;
+            try
+            {
+                List<Sensor> sensors;
 
-            if (hub_id.HasValue)
-            {
-                sensors = await _sensorService.GetSensorsByHubIdAsync(hub_id.Value);
-            }
-            else if (type.HasValue)
-            {
-                sensors = await _sensorService.GetSensorsByTypeIdAsync(type.Value);
-            }
-            else
-            {
-                sensors = await _sensorService.GetAllSensorsAsync();
-            }
+                if (hub_id.HasValue)
+                {
+                    sensors = await _sensorService.GetSensorsByHubIdAsync(hub_id.Value);
+                }
+                else if (type.HasValue)
+                {
+                    sensors = await _sensorService.GetSensorsByTypeIdAsync(type.Value);
+                }
+                else
+                {
+                    sensors = await _sensorService.GetAllSensorsAsync();
+                }
 
-            var sensorDtos = sensors.Select(s => new SensorDto
-            {
-                SensorId = s.SensorId,
-                HubId = s.HubId,
-                HubName = s.Hub?.Name,
-                TypeId = s.TypeId,
-                TypeName = s.Type?.TypeName,
-                SensorName = s.Name,
-                CurrentValue = s.CurrentValue,
-                LastUpdate = s.LastUpdate,
-                Status = s.Status
-            }).ToList();
+                var sensorDtos = sensors.Select(s => new SensorDto
+                {
+                    SensorId = s.SensorId,
+                    HubId = s.HubId,
+                    HubName = s.Hub?.Name,
+                    TypeId = s.TypeId,
+                    TypeName = s.Type?.TypeName,
+                    SensorName = s.Name,
+                    CurrentValue = s.CurrentValue,
+                    LastUpdate = s.LastUpdate,
+                    Status = s.Status
+                }).ToList();
 
-            return Ok(sensorDtos);
+                return Ok(new
+                {
+                    message = "Lấy danh sách cảm biến thành công",
+                    count = sensorDtos.Count,
+                    data = sensorDtos
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy danh sách cảm biến: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -64,34 +76,50 @@ namespace SWD.API.Controllers
         [Authorize(Roles = "Admin,ADMIN,Manager,MANAGER")]
         public async Task<IActionResult> RegisterSensorAsync([FromBody] RegisterSensorDto request)
         {
-            var sensor = new Sensor
+            try
             {
-                HubId = request.HubId,
-                TypeId = request.TypeId,
-                Name = request.Name,
-                Status = "Active",
-                CurrentValue = 0,
-                LastUpdate = DateTime.UtcNow
-            };
+                if (string.IsNullOrWhiteSpace(request.Name))
+                    return BadRequest(new { message = "Tên cảm biến không được để trống" });
 
-            await _sensorService.RegisterSensorAsync(sensor);
+                if (request.HubId <= 0)
+                    return BadRequest(new { message = "HubId không hợp lệ" });
 
-            return Ok(new
-            {
-                message = "Sensor registered successfully",
-                sensor = new SensorDto
+                if (request.TypeId <= 0)
+                    return BadRequest(new { message = "TypeId không hợp lệ" });
+
+                var sensor = new Sensor
                 {
-                    SensorId = sensor.SensorId,
-                    HubId = sensor.HubId,
-                    HubName = null,
-                    TypeId = sensor.TypeId,
-                    TypeName = null,
-                    SensorName = sensor.Name,
-                    CurrentValue = sensor.CurrentValue,
-                    LastUpdate = sensor.LastUpdate,
-                    Status = sensor.Status
-                }
-            });
+                    HubId = request.HubId,
+                    TypeId = request.TypeId,
+                    Name = request.Name,
+                    Status = "Active",
+                    CurrentValue = 0,
+                    LastUpdate = DateTime.UtcNow
+                };
+
+                await _sensorService.RegisterSensorAsync(sensor);
+
+                return Ok(new
+                {
+                    message = "Đăng ký cảm biến thành công",
+                    sensor = new SensorDto
+                    {
+                        SensorId = sensor.SensorId,
+                        HubId = sensor.HubId,
+                        HubName = null,
+                        TypeId = sensor.TypeId,
+                        TypeName = null,
+                        SensorName = sensor.Name,
+                        CurrentValue = sensor.CurrentValue,
+                        LastUpdate = sensor.LastUpdate,
+                        Status = sensor.Status
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi đăng ký cảm biến: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -131,11 +159,17 @@ namespace SWD.API.Controllers
                     RecordedAt = r.RecordedAt
                 }).ToList();
 
-                return Ok(readingDtos);
+                return Ok(new
+                {
+                    message = "Lấy dữ liệu đo của cảm biến thành công",
+                    sensorId = id,
+                    count = readingDtos.Count,
+                    data = readingDtos
+                });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { message = "Failed to get readings", error = ex.Message });
+                return BadRequest(new { message = "Lỗi khi lấy dữ liệu đo: " + ex.Message });
             }
         }
 
@@ -150,10 +184,13 @@ namespace SWD.API.Controllers
         {
             try
             {
+                if (sensorId <= 0)
+                    return BadRequest(new { message = "SensorId không hợp lệ" });
+
                 await _sensorService.ProcessReadingAsync(sensorId, value);
                 return Ok(new
                 {
-                    message = "Telemetry received successfully",
+                    message = "Nhận dữ liệu telemetry thành công",
                     sensorId = sensorId,
                     value = value,
                     timestamp = DateTime.UtcNow
@@ -163,7 +200,7 @@ namespace SWD.API.Controllers
             {
                 return BadRequest(new
                 {
-                    message = "Failed to process telemetry",
+                    message = "Lỗi khi xử lý dữ liệu telemetry",
                     error = ex.Message
                 });
             }
@@ -175,8 +212,20 @@ namespace SWD.API.Controllers
         [HttpGet("types")]
         public async Task<IActionResult> GetAllTypesAsync()
         {
-            var types = await _sensorService.GetAllSensorTypesAsync();
-            return Ok(types);
+            try
+            {
+                var types = await _sensorService.GetAllSensorTypesAsync();
+                return Ok(new
+                {
+                    message = "Lấy danh sách loại cảm biến thành công",
+                    count = types.Count,
+                    data = types
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy danh sách loại cảm biến: " + ex.Message });
+            }
         }
     }
 }

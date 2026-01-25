@@ -15,5 +15,6 @@ namespace SWD.BLL.Interfaces
         Task UpdateHubAsync(Hub hub);
         Task DeleteHubAsync(int hubId);
         Task<Hub?> GetHubWithReadingsAsync(int hubId, DateTime? from, DateTime? to);
+        Task<List<Sensor>> GetHubCurrentTemperatureAsync(int hubId);
     }
 }

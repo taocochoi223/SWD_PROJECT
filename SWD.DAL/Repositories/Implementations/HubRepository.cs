@@ -95,6 +95,21 @@ namespace SWD.DAL.Repositories.Implementations
             return await query.FirstOrDefaultAsync(h => h.HubId == hubId);
         }
 
+        public async Task<List<Sensor>> GetHubTemperatureSensorsAsync(int hubId)
+        {
+            return await _context.Sensors
+                .Include(s => s.Type)
+                .Include(s => s.Hub)
+                .Where(s => s.HubId == hubId && 
+                       (s.Type.TypeName.Contains("Temperature") || 
+                        s.Type.TypeName.Contains("Nhiệt độ") ||
+                        s.Type.TypeName.Contains("Humidity") ||
+                        s.Type.TypeName.Contains("Độ ẩm") ||
+                        s.Type.TypeName.Contains("Pressure") ||
+                        s.Type.TypeName.Contains("Áp suất")))
+                .ToListAsync();
+        }
+
 
 
     }

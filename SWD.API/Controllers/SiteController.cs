@@ -25,27 +25,39 @@ namespace SWD.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllSitesAsync([FromQuery] string? search = null)
         {
-            var sites = await _siteService.GetAllSitesAsync();
-            if (!string.IsNullOrWhiteSpace(search))
+            try
             {
-                sites = sites.Where(s =>
-                    s.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    s.SiteId.ToString().Contains(search)
-                ).ToList();
+                var sites = await _siteService.GetAllSitesAsync();
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    sites = sites.Where(s =>
+                        s.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                        s.SiteId.ToString().Contains(search)
+                    ).ToList();
+                }
+
+                var siteDtos = sites.Select(s => new SiteDto
+                {
+                    SiteId = s.SiteId,
+                    OrgId = s.OrgId,
+                    OrgName = s.Org?.Name ?? "Unknown",
+                    Name = s.Name,
+                    Address = s.Address,
+                    GeoLocation = s.GeoLocation,
+                    HubCount = s.Hubs?.Count ?? 0
+                }).ToList();
+
+                return Ok(new
+                {
+                    message = "Lấy danh sách địa điểm thành công",
+                    count = siteDtos.Count,
+                    data = siteDtos
+                });
             }
-
-            var siteDtos = sites.Select(s => new SiteDto
+            catch (Exception ex)
             {
-                SiteId = s.SiteId,
-                OrgId = s.OrgId,
-                OrgName = s.Org?.Name ?? "Unknown",
-                Name = s.Name,
-                Address = s.Address,
-                GeoLocation = s.GeoLocation,
-                HubCount = s.Hubs?.Count ?? 0
-            }).ToList();
-
-            return Ok(siteDtos);
+                return BadRequest(new { message = "Lỗi khi lấy danh sách địa điểm: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -55,29 +67,39 @@ namespace SWD.API.Controllers
         [Authorize(Roles = "Admin,ADMIN")]
         public async Task<IActionResult> CreateSiteAsync([FromBody] CreateSiteDto request)
         {
-            var site = new Site
+            try
             {
-                OrgId = request.OrgId,
-                Name = request.Name,
-                Address = request.Address,
-                GeoLocation = request.GeoLocation
-            };
+                if (string.IsNullOrWhiteSpace(request.Name))
+                    return BadRequest(new { message = "Tên địa điểm không được để trống" });
 
-            await _siteService.CreateSiteAsync(site);
-
-            return Ok(new
-            {
-                Message = "Site created successfully",
-                Data = new SiteDto
+                var site = new Site
                 {
-                    SiteId = site.SiteId,
-                    OrgId = site.OrgId,
-                    Name = site.Name,
-                    Address = site.Address,
-                    GeoLocation = site.GeoLocation,
-                    HubCount = 0
-                }
-            });
+                    OrgId = request.OrgId,
+                    Name = request.Name,
+                    Address = request.Address,
+                    GeoLocation = request.GeoLocation
+                };
+
+                await _siteService.CreateSiteAsync(site);
+
+                return Ok(new
+                {
+                    message = "Tạo địa điểm thành công",
+                    data = new SiteDto
+                    {
+                        SiteId = site.SiteId,
+                        OrgId = site.OrgId,
+                        Name = site.Name,
+                        Address = site.Address,
+                        GeoLocation = site.GeoLocation,
+                        HubCount = 0
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi tạo địa điểm: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -86,22 +108,29 @@ namespace SWD.API.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetSiteByIdAsync(int id)
         {
-            var site = await _siteService.GetSiteByIdAsync(id);
-            if (site == null)
-                return NotFound(new { message = "Site not found" });
-
-            var siteDto = new SiteDto
+            try
             {
-                SiteId = site.SiteId,
-                OrgId = site.OrgId,
-                OrgName = site.Org?.Name ?? "Unknown",
-                Name = site.Name,
-                Address = site.Address,
-                GeoLocation = site.GeoLocation,
-                HubCount = site.Hubs?.Count ?? 0
-            };
+                var site = await _siteService.GetSiteByIdAsync(id);
+                if (site == null)
+                    return NotFound(new { message = "Không tìm thấy địa điểm với ID: " + id });
 
-            return Ok(siteDto);
+                var siteDto = new SiteDto
+                {
+                    SiteId = site.SiteId,
+                    OrgId = site.OrgId,
+                    OrgName = site.Org?.Name ?? "Unknown",
+                    Name = site.Name,
+                    Address = site.Address,
+                    GeoLocation = site.GeoLocation,
+                    HubCount = site.Hubs?.Count ?? 0
+                };
+
+                return Ok(new { message = "Lấy thông tin địa điểm thành công", data = siteDto });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy thông tin địa điểm: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -111,18 +140,25 @@ namespace SWD.API.Controllers
         [Authorize(Roles = "Admin,ADMIN")]
         public async Task<IActionResult> UpdateSiteAsync(int id, [FromBody] CreateSiteDto request)
         {
-            var existingSite = await _siteService.GetSiteByIdAsync(id);
-            if (existingSite == null)
-                return NotFound(new { message = "Site not found" });
+            try
+            {
+                var existingSite = await _siteService.GetSiteByIdAsync(id);
+                if (existingSite == null)
+                    return NotFound(new { message = "Không tìm thấy địa điểm với ID: " + id });
 
-            existingSite.OrgId = request.OrgId;
-            existingSite.Name = request.Name;
-            existingSite.Address = request.Address;
-            existingSite.GeoLocation = request.GeoLocation;
+                existingSite.OrgId = request.OrgId;
+                existingSite.Name = request.Name;
+                existingSite.Address = request.Address;
+                existingSite.GeoLocation = request.GeoLocation;
 
-            await _siteService.UpdateSiteAsync(existingSite);
+                await _siteService.UpdateSiteAsync(existingSite);
 
-            return Ok(new { message = "Site updated successfully", siteId = existingSite.SiteId });
+                return Ok(new { message = "Cập nhật địa điểm thành công", siteId = existingSite.SiteId });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi cập nhật địa điểm: " + ex.Message });
+            }
         }
 
         /// <summary>
@@ -132,13 +168,20 @@ namespace SWD.API.Controllers
         [Authorize(Roles = "Admin,ADMIN")]
         public async Task<IActionResult> DeleteSiteAsync(int id)
         {
-            var existingSite = await _siteService.GetSiteByIdAsync(id);
-            if (existingSite == null)
-                return NotFound(new { message = "Site not found" });
+            try
+            {
+                var existingSite = await _siteService.GetSiteByIdAsync(id);
+                if (existingSite == null)
+                    return NotFound(new { message = "Không tìm thấy địa điểm với ID: " + id });
 
-            await _siteService.DeleteSiteAsync(id);
+                await _siteService.DeleteSiteAsync(id);
 
-            return Ok(new { message = "Site deleted successfully", siteId = id });
+                return Ok(new { message = "Xóa địa điểm thành công", siteId = id });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi xóa địa điểm: " + ex.Message });
+            }
         }
     }
 }
