@@ -154,12 +154,24 @@ namespace SWD.API.Controllers
                 if (!string.IsNullOrEmpty(request.Name))
                     existingHub.Name = request.Name;
 
+                if (!string.IsNullOrEmpty(request.MacAddress) && request.MacAddress != existingHub.MacAddress)
+                {
+                    var duplicateHub = await _hubService.GetHubByMacAsync(request.MacAddress);
+                    if (duplicateHub != null && duplicateHub.HubId != id)
+                    {
+                        return BadRequest(new { message = "Hub với địa chỉ MAC này đã tồn tại" });
+                    }
+                    existingHub.MacAddress = request.MacAddress;
+                }
+
                 await _hubService.UpdateHubAsync(existingHub);
                 return Ok(new 
                 { 
                     message = "Cập nhật Hub thành công", 
                     hubId = existingHub.HubId,
-                    name = existingHub.Name
+                    name = existingHub.Name,
+                    macAdress = existingHub.MacAddress,
+                    siteId = existingHub.SiteId
                 });
             }
             catch (Exception ex)
