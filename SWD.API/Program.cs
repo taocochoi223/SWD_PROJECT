@@ -90,6 +90,26 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 
 // 79. Register Hosted Services
 builder.Services.AddHostedService<SWD.API.Services.MqttWorkerService>();
+builder.Services.AddHostedService<SWD.API.Services.StatusMonitorService>();
+
+// 80. Add SignalR
+builder.Services.AddSignalR();
+
+// 81. Configure CORS for SignalR
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("SignalRPolicy", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "https://swd-fe-project.vercel.app"
+              )
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
 
 // 4. Cấu hình JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -128,8 +148,15 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
+// Enable CORS
+app.UseCors("SignalRPolicy");
+
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// Map SignalR Hub
+app.MapHub<SWD.API.Hubs.SensorHub>("/sensorHub");
+
 app.Run();

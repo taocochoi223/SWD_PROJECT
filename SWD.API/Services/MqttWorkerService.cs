@@ -8,6 +8,8 @@ using SWD.BLL.Interfaces;
 using SWD.DAL.Models;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
+using SWD.API.Hubs;
 
 namespace SWD.API.Services
 {
@@ -16,6 +18,7 @@ namespace SWD.API.Services
         private readonly ILogger<MqttWorkerService> _logger;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IConfiguration _configuration;
+        private readonly IHubContext<SensorHub> _hubContext;
         private IMqttClient _mqttClient = null!;
         private MqttClientOptions _mqttOptions = null!;
 
@@ -25,11 +28,12 @@ namespace SWD.API.Services
         private string GatewayToken => _configuration["MqttSettings:GatewayToken"] ?? "";
         private string TopicTemplate => _configuration["MqttSettings:TopicTemplate"] ?? "eoh/chip/{0}/third_party/+/data";
 
-        public MqttWorkerService(ILogger<MqttWorkerService> logger, IServiceScopeFactory scopeFactory, IConfiguration configuration)
+        public MqttWorkerService(ILogger<MqttWorkerService> logger, IServiceScopeFactory scopeFactory, IConfiguration configuration, IHubContext<SensorHub> hubContext)
         {
             _logger = logger;
             _scopeFactory = scopeFactory;
             _configuration = configuration;
+            _hubContext = hubContext;
         }
 
         public override async Task StartAsync(CancellationToken cancellationToken)
@@ -124,7 +128,7 @@ namespace SWD.API.Services
                     if (hub != null)
                     {
                         hub.IsOnline = true;
-                        hub.LastHandshake = DateTime.Now;
+                        hub.LastHandshake = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
 
                         if (!string.IsNullOrEmpty(data.v5) || !string.IsNullOrEmpty(data.v6))
                         {
@@ -140,11 +144,14 @@ namespace SWD.API.Services
 
                         await hubService.UpdateHubAsync(hub);
 
+                        // Broadcast hub online status via SignalR
+                        await BroadcastHubStatus(hub);
+
                         var sensors = await sensorService.GetSensorsByHubIdAsync(hub.HubId);
 
-                        await ProcessSensorReading(sensorService, sensors, "Temperature", data.v1);
-                        await ProcessSensorReading(sensorService, sensors, "Humidity", data.v2);
-                        await ProcessSensorReading(sensorService, sensors, "Pressure", data.v3);
+                        await ProcessSensorReading(sensorService, sensors, "Temperature", data.v1, hub.HubId);
+                        await ProcessSensorReading(sensorService, sensors, "Humidity", data.v2, hub.HubId);
+                        await ProcessSensorReading(sensorService, sensors, "Pressure", data.v3, hub.HubId);
                     }
                     else
                     {
@@ -159,13 +166,61 @@ namespace SWD.API.Services
             }
         }
 
-        private async Task ProcessSensorReading(ISensorService sensorService, List<Sensor> sensors, string typeName, double value)
+        private async Task ProcessSensorReading(ISensorService sensorService, List<Sensor> sensors, string typeName, double value, int hubId)
         {
             var sensor = sensors.FirstOrDefault(s => s.Type != null && s.Type.TypeName.Equals(typeName, StringComparison.OrdinalIgnoreCase));
             if (sensor != null)
             {
+                // Process reading and update sensor value
                 await sensorService.ProcessReadingAsync(sensor.SensorId, (float)value);
+                
+                // Auto-set sensor status to Online when receiving data
+                if (sensor.Status != "Online")
+                {
+                    await sensorService.UpdateSensorStatusAsync(sensor.SensorId, "Online");
+                    sensor.Status = "Online"; // Update local object for broadcast
+                }
+                
+                // Broadcast sensor update via SignalR
+                await BroadcastSensorUpdate(sensor, (float)value, hubId);
             }
+        }
+
+        private async Task BroadcastSensorUpdate(Sensor sensor, float value, int hubId)
+        {
+            var sensorData = new
+            {
+                hubId = hubId,
+                sensorId = sensor.SensorId,
+                sensorName = sensor.Name,
+                typeName = sensor.Type?.TypeName ?? "Unknown",
+                value = value,
+                unit = sensor.Type?.Unit ?? "",
+                status = sensor.Status,
+                timestamp = DateTime.UtcNow
+            };
+
+            // Broadcast to all clients
+            await _hubContext.Clients.All.SendAsync("ReceiveSensorUpdate", sensorData);
+            
+            // Broadcast to hub-specific group
+            await _hubContext.Clients.Group($"hub_{hubId}").SendAsync("ReceiveSensorUpdate", sensorData);
+        }
+
+        private async Task BroadcastHubStatus(DAL.Models.Hub hub)
+        {
+            var statusData = new
+            {
+                hubId = hub.HubId,
+                hubName = hub.Name,
+                macAddress = hub.MacAddress,
+                isOnline = hub.IsOnline,
+                lastHandshake = hub.LastHandshake,
+                timestamp = DateTime.UtcNow
+            };
+
+            await _hubContext.Clients.All.SendAsync("ReceiveHubStatus", statusData);
+            await _hubContext.Clients.Group($"hub_{hub.HubId}").SendAsync("ReceiveHubOnline", statusData);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)

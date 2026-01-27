@@ -16,6 +16,7 @@ namespace SWD.BLL.Interfaces
         Task<List<SensorType>> GetAllSensorTypesAsync();
         Task<List<Sensor>> GetSensorsByHubIdAsync(int hubId);    
         Task<List<Sensor>> GetSensorsByTypeIdAsync(int typeId);  
-        Task RegisterSensorAsync(Sensor sensor);       
+        Task RegisterSensorAsync(Sensor sensor);
+        Task UpdateSensorStatusAsync(int sensorId, string status);
     }
 }

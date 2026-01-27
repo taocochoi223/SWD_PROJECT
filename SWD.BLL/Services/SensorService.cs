@@ -59,7 +59,7 @@ namespace SWD.BLL.Services
             {
                 SensorId = sensorId,
                 Value = value,
-                RecordedAt = DateTime.Now
+                RecordedAt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"))
             };
 
             await _sensorRepo.AddReadingAsync(reading);
@@ -68,13 +68,24 @@ namespace SWD.BLL.Services
             if (sensor != null)
             {
                 sensor.CurrentValue = value;
-                sensor.LastUpdate = DateTime.Now;
+                sensor.LastUpdate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
                 await _sensorRepo.UpdateSensorAsync(sensor);
             }
 
             await _sensorRepo.SaveChangesAsync();
 
             await _alertService.CheckAndTriggerAlertAsync(reading);
+        }
+
+        public async Task UpdateSensorStatusAsync(int sensorId, string status)
+        {
+            var sensor = await _sensorRepo.GetSensorByIdAsync(sensorId);
+            if (sensor != null)
+            {
+                sensor.Status = status;
+                await _sensorRepo.UpdateSensorAsync(sensor);
+                await _sensorRepo.SaveChangesAsync();
+            }
         }
     }
 }
