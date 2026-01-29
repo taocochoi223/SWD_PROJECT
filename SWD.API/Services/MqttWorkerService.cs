@@ -51,7 +51,8 @@ namespace SWD.API.Services
             _mqttClient.DisconnectedAsync += MqttClient_DisconnectedAsync;
             _mqttClient.ApplicationMessageReceivedAsync += MqttClient_ApplicationMessageReceivedAsync;
 
-            await ConnectToMqttAsync();
+            // Removed blocking ConnectToMqttAsync() call here. 
+            // It is now handled in ExecuteAsync to ensure fast startup.
 
             await base.StartAsync(cancellationToken);
         }
@@ -225,6 +226,9 @@ namespace SWD.API.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            // Initial connection attempt in background
+            await ConnectToMqttAsync();
+
             while (!stoppingToken.IsCancellationRequested)
             {
                 await Task.Delay(1000, stoppingToken);
