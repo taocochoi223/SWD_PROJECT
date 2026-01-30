@@ -15,7 +15,7 @@ namespace SWD.API.Services
         private readonly IConfiguration _configuration;
 
         private int CheckIntervalSeconds => int.Parse(_configuration["StatusMonitor:CheckIntervalSeconds"] ?? "60");
-        private int OfflineThresholdMinutes => int.Parse(_configuration["StatusMonitor:OfflineThresholdMinutes"] ?? "5");
+        private int OfflineThresholdMinutes => int.Parse(_configuration["StatusMonitor:OfflineThresholdMinutes"] ?? "1");
 
         public StatusMonitorService(
             ILogger<StatusMonitorService> logger,
