@@ -14,8 +14,8 @@ namespace SWD.API.Services
         private readonly IHubContext<SensorHub> _hubContext;
         private readonly IConfiguration _configuration;
 
-        private int CheckIntervalSeconds => int.Parse(_configuration["StatusMonitor:CheckIntervalSeconds"] ?? "60");
-        private int OfflineThresholdMinutes => int.Parse(_configuration["StatusMonitor:OfflineThresholdMinutes"] ?? "1");
+        private int CheckIntervalSeconds => int.Parse(_configuration["StatusMonitor:CheckIntervalSeconds"] ?? "10");
+        private int OfflineThresholdSeconds => int.Parse(_configuration["StatusMonitor:OfflineThresholdSeconds"] ?? "15");
 
         public StatusMonitorService(
             ILogger<StatusMonitorService> logger,
@@ -31,7 +31,7 @@ namespace SWD.API.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation($"StatusMonitorService started. Check interval: {CheckIntervalSeconds}s, Offline threshold: {OfflineThresholdMinutes}m");
+            _logger.LogInformation($"StatusMonitorService started. Check interval: {CheckIntervalSeconds}s, Offline threshold: {OfflineThresholdSeconds}s");
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -81,7 +81,7 @@ namespace SWD.API.Services
                 }
             }
             
-            var offlineThresholdIdx = vietnamNow.AddMinutes(-OfflineThresholdMinutes);
+            var offlineThresholdIdx = vietnamNow.AddSeconds(-OfflineThresholdSeconds);
              // Compare with local time since DB stores local time
             var hubsToMarkOffline = onlineHubs.Where(h => (h.LastHandshake ?? DateTime.MinValue) < offlineThresholdIdx).ToList();
 
