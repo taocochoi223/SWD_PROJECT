@@ -22,7 +22,6 @@ namespace SWD.API.Services
         private IMqttClient _mqttClient = null!;
         private MqttClientOptions _mqttOptions = null!;
 
-        // Configurations from appsettings.json
         private string Broker => _configuration["MqttSettings:Broker"] ?? "mqtt1.eoh.io";
         private int Port => int.Parse(_configuration["MqttSettings:Port"] ?? "1883");
         private string GatewayToken => _configuration["MqttSettings:GatewayToken"] ?? "";
@@ -51,9 +50,6 @@ namespace SWD.API.Services
             _mqttClient.DisconnectedAsync += MqttClient_DisconnectedAsync;
             _mqttClient.ApplicationMessageReceivedAsync += MqttClient_ApplicationMessageReceivedAsync;
 
-            // Removed blocking ConnectToMqttAsync() call here. 
-            // It is now handled in ExecuteAsync to ensure fast startup.
-
             await base.StartAsync(cancellationToken);
         }
 
@@ -77,14 +73,21 @@ namespace SWD.API.Services
         private async Task MqttClient_ConnectedAsync(MqttClientConnectedEventArgs arg)
         {
             _logger.LogInformation("Connected to MQTT Broker.");
-            string subscribeTopic = string.Format(TopicTemplate, GatewayToken);
+            
+            // Subscribe to data topic
+            string dataTopic = string.Format(TopicTemplate, GatewayToken);
+            
+            // Subscribe to status topic for Last Will detection
+            string statusTopic = $"eoh/chip/{GatewayToken}/third_party/+/status";
             
             var subscribeOptions = new MqttClientSubscribeOptionsBuilder()
-                .WithTopicFilter(f => f.WithTopic(subscribeTopic))
+                .WithTopicFilter(f => f.WithTopic(dataTopic))
+                .WithTopicFilter(f => f.WithTopic(statusTopic))
                 .Build();
             
             await _mqttClient.SubscribeAsync(subscribeOptions);
-            _logger.LogInformation($"Subscribed to wildcard topic: {subscribeTopic}");
+            _logger.LogInformation($"Subscribed to data topic: {dataTopic}");
+            _logger.LogInformation($"Subscribed to status topic: {statusTopic}");
         }
 
         private Task MqttClient_DisconnectedAsync(MqttClientDisconnectedEventArgs arg)
@@ -104,17 +107,45 @@ namespace SWD.API.Services
             string payload = Encoding.UTF8.GetString(e.ApplicationMessage.PayloadSegment.ToArray());
             _logger.LogInformation($"Received Message on {topic}: {payload}");
 
-            // Extract Chip ID from topic: eoh/chip/{GatewayToken}/third_party/{CHIP_ID}/data
-            // The Chip ID is the second to last segment
             string[] topicSegments = topic.Split('/');
             if (topicSegments.Length < 2) return;
-            string chipId = topicSegments[topicSegments.Length - 2]; 
+            string chipId = topicSegments[topicSegments.Length - 2];
+            
+            bool isStatusMessage = topic.EndsWith("/status");
 
             using (var scope = _scopeFactory.CreateScope())
             {
                 var sensorService = scope.ServiceProvider.GetRequiredService<ISensorService>();
                 var hubService = scope.ServiceProvider.GetRequiredService<IHubService>();
                 var systemLogService = scope.ServiceProvider.GetRequiredService<ISystemLogService>();
+
+                var hub = await hubService.GetHubByMacAsync(chipId);
+                
+                if (hub == null)
+                {
+                    _logger.LogWarning($"Hub with Mac (Chip ID) {chipId} not found in DB.");
+                    return;
+                }
+                if (isStatusMessage && payload.Trim().ToUpper() == "OFFLINE")
+                {
+                    _logger.LogWarning($"Received Last Will OFFLINE for Hub {hub.HubId} ({hub.Name})");
+                    
+                    hub.IsOnline = false;
+                    await hubService.UpdateHubAsync(hub);
+                    var sensors = await sensorService.GetSensorsByHubIdAsync(hub.HubId);
+                    foreach (var sensor in sensors)
+                    {
+                        if (sensor.Status == "Online")
+                        {
+                            await sensorService.UpdateSensorStatusAsync(sensor.SensorId, "Offline");
+                        }
+                    }
+                    
+                    await BroadcastHubStatus(hub);
+                    
+                    _logger.LogInformation($"Hub {hub.HubId} marked offline via Last Will. {sensors.Count} sensors affected.");
+                    return;
+                }
 
                 try
                 {
@@ -123,12 +154,10 @@ namespace SWD.API.Services
 
                     await systemLogService.LogOptionAsync("MQTT-Listener", $"Topic: {topic} | Payload: {payload}");
 
-                    // Look up Hub by MacAddress (which we use to store Chip ID)
                     var hub = await hubService.GetHubByMacAsync(chipId);
 
                     if (hub != null)
                     {
-                        // Track if hub was offline before this update
                         bool wasOffline = hub.IsOnline != true;
                         
                         hub.IsOnline = true;
@@ -146,7 +175,6 @@ namespace SWD.API.Services
                             }
                             catch
                             {
-                                // Fallback for systems where neither ID exists
                                 hub.LastHandshake = DateTime.UtcNow.AddHours(7);
                             }
                         }
@@ -164,8 +192,6 @@ namespace SWD.API.Services
                         }
 
                         await hubService.UpdateHubAsync(hub);
-
-                        // Only broadcast hub status if it just came back online (status changed)
                         if (wasOffline)
                         {
                             _logger.LogInformation($"Hub {hub.HubId} ({hub.Name}) just came back online, broadcasting status");
@@ -196,17 +222,14 @@ namespace SWD.API.Services
             var sensor = sensors.FirstOrDefault(s => s.Type != null && s.Type.TypeName.Equals(typeName, StringComparison.OrdinalIgnoreCase));
             if (sensor != null)
             {
-                // Process reading and update sensor value
                 await sensorService.ProcessReadingAsync(sensor.SensorId, (float)value);
                 
-                // Auto-set sensor status to Online when receiving data
                 if (sensor.Status != "Online")
                 {
                     await sensorService.UpdateSensorStatusAsync(sensor.SensorId, "Online");
-                    sensor.Status = "Online"; // Update local object for broadcast
+                    sensor.Status = "Online";
                 }
                 
-                // Broadcast sensor update via SignalR
                 await BroadcastSensorUpdate(sensor, (float)value, hubId);
             }
         }
@@ -225,10 +248,8 @@ namespace SWD.API.Services
                 timestamp = DateTime.UtcNow
             };
 
-            // Broadcast to all clients
             await _hubContext.Clients.All.SendAsync("ReceiveSensorUpdate", sensorData);
             
-            // Broadcast to hub-specific group
             await _hubContext.Clients.Group($"hub_{hubId}").SendAsync("ReceiveSensorUpdate", sensorData);
         }
 
@@ -250,7 +271,6 @@ namespace SWD.API.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            // Initial connection attempt in background
             await ConnectToMqttAsync();
 
             while (!stoppingToken.IsCancellationRequested)
