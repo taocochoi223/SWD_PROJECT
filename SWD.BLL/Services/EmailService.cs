@@ -8,7 +8,7 @@ namespace SWD.BLL.Services
     public class EmailService : IEmailService
     {
         private readonly string _fromEmail = "caohuutritl1234@gmail.com";
-        private readonly string _appPassword = "pguo ghnz kifv ztwt";
+        private readonly string _appPassword = "thsdbqcdeauazife";  // Updated App Password
 
         public async Task SendEmailAsync(string toEmail, string subject, string body)
         {

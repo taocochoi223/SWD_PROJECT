@@ -69,6 +69,7 @@ namespace SWD.API.Controllers
             {
                 await _userService.RegisterUserAsync(newUser);
 
+                // Fire-and-forget email sending (không đợi email xong)
                 string subject = "Welcome to WinMart IoT System";
                 string body = $"<h3>Xin chào {request.FullName},</h3>" +
                               $"<p>Tài khoản của bạn đã được tạo thành công.</p>" +
@@ -76,26 +77,28 @@ namespace SWD.API.Controllers
                               $"<p>Mật khẩu tạm thời: <b>{randomPassword}</b></p>" +
                               $"<p><strong>Lưu ý:</strong> Vui lòng đăng nhập và đổi mật khẩu ngay để bảo mật tài khoản.</p>";
 
-                try
+                // Gửi email trong background, không block response
+                _ = Task.Run(async () =>
                 {
-                    await _emailService.SendEmailAsync(request.Email!, subject, body);
-                    return Ok(new { 
-                        message = "Tạo tài khoản thành công! Email chứa mật khẩu tạm thời đã được gửi đến " + request.Email,
-                        userId = newUser.UserId,
-                        email = newUser.Email,
-                        fullName = newUser.FullName
-                    });
-                }
-                catch (Exception emailEx)
+                    try
+                    {
+                        await _emailService.SendEmailAsync(request.Email!, subject, body);
+                    }
+                    catch (Exception emailEx)
+                    {
+                        // Log error nhưng không ảnh hưởng response
+                        Console.WriteLine($"Email sending failed: {emailEx.Message}");
+                    }
+                });
+
+                // Trả response ngay lập tức
+                return Ok(new
                 {
-                    return Ok(new { 
-                        message = "Tạo tài khoản thành công nhưng không thể gửi email. Vui lòng liên hệ quản trị viên để lấy mật khẩu",
-                        warning = "Email sending failed: " + emailEx.Message,
-                        userId = newUser.UserId,
-                        email = newUser.Email,
-                        temporaryPassword = randomPassword
-                    });
-                }
+                    message = "Tạo tài khoản thành công! Email chứa mật khẩu tạm thời sẽ được gửi trong giây lát",
+                    userId = newUser.UserId,
+                    email = newUser.Email,
+                    fullName = newUser.FullName,
+                });
             }
             catch (Exception ex)
             {
