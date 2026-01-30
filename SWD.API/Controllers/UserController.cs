@@ -98,6 +98,7 @@ namespace SWD.API.Controllers
                     userId = newUser.UserId,
                     email = newUser.Email,
                     fullName = newUser.FullName,
+                    temporaryPassword = randomPassword 
                 });
             }
             catch (Exception ex)
