@@ -154,8 +154,7 @@ namespace SWD.API.Services
 
                     await systemLogService.LogOptionAsync("MQTT-Listener", $"Topic: {topic} | Payload: {payload}");
 
-                    var hub = await hubService.GetHubByMacAsync(chipId);
-
+                    // hub is already fetched above for Last Will check
                     if (hub != null)
                     {
                         bool wasOffline = hub.IsOnline != true;
