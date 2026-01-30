@@ -188,7 +188,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment:
       name: production
-      url: https://your-app.onrender.com
+      url: https://swd-project-api.onrender.com
     
     steps:
     - name: 🚀 Trigger Render Deployment
@@ -208,14 +208,7 @@ jobs:
         echo "Waiting 60 seconds for deployment to complete..."
         sleep 60
 
-    - name: 🔍 Health check
-      run: |
-        echo "Running health check..."
-        # Uncomment and update with your actual health check endpoint
-        # curl -f https://your-app.onrender.com/health || exit 1
-        echo "✅ Health check passed (placeholder)"
-
-    - name: 📊 Deployment Summary
+    - name:  Deployment Summary
       if: always()
       run: |
         echo "### Deployment Summary 🚀" >> $GITHUB_STEP_SUMMARY
