@@ -68,11 +68,6 @@ namespace SWD.API.Controllers
             if (string.IsNullOrWhiteSpace(request.FullName))
                 return BadRequest(new { message = "Tên người dùng không được để trống" });
 
-            // Check if email already exists
-            var existingUser = await _userService.GetUserByEmailAsync(request.Email);
-            if (existingUser != null)
-                return BadRequest(new { message = "Email này đã tồn tại trong hệ thống. Vui lòng sử dụng email khác" });
-
             string randomPassword = Guid.NewGuid().ToString().Substring(0, 8) + "@A1";
             string hashedPassword = BCrypt.Net.BCrypt.HashPassword(randomPassword);
 
