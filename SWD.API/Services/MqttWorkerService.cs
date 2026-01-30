@@ -128,6 +128,9 @@ namespace SWD.API.Services
 
                     if (hub != null)
                     {
+                        // Track if hub was offline before this update
+                        bool wasOffline = hub.IsOnline != true;
+                        
                         hub.IsOnline = true;
                         try 
                         {
@@ -162,8 +165,12 @@ namespace SWD.API.Services
 
                         await hubService.UpdateHubAsync(hub);
 
-                        // Broadcast hub online status via SignalR
-                        await BroadcastHubStatus(hub);
+                        // Only broadcast hub status if it just came back online (status changed)
+                        if (wasOffline)
+                        {
+                            _logger.LogInformation($"Hub {hub.HubId} ({hub.Name}) just came back online, broadcasting status");
+                            await BroadcastHubStatus(hub);
+                        }
 
                         var sensors = await sensorService.GetSensorsByHubIdAsync(hub.HubId);
 
