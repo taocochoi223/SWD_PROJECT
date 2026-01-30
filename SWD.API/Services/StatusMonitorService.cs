@@ -64,8 +64,26 @@ namespace SWD.API.Services
                 return;
             }
 
-            var offlineThreshold = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")).AddMinutes(-OfflineThresholdMinutes);
-            var hubsToMarkOffline = onlineHubs.Where(h => h.LastHandshake < offlineThreshold).ToList();
+            DateTime vietnamNow;
+            try 
+            {
+                vietnamNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+            }
+            catch
+            {
+                try 
+                {
+                     vietnamNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Asia/Bangkok"));
+                }
+                catch
+                {
+                     vietnamNow = DateTime.UtcNow.AddHours(7);
+                }
+            }
+            
+            var offlineThresholdIdx = vietnamNow.AddMinutes(-OfflineThresholdMinutes);
+             // Compare with local time since DB stores local time
+            var hubsToMarkOffline = onlineHubs.Where(h => (h.LastHandshake ?? DateTime.MinValue) < offlineThresholdIdx).ToList();
 
             if (!hubsToMarkOffline.Any())
             {
@@ -78,7 +96,6 @@ namespace SWD.API.Services
                 try
                 {
                     // Calculate how long hub has been inactive
-                    var vietnamNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
                     var inactiveMinutes = (vietnamNow - (hub.LastHandshake ?? vietnamNow)).TotalMinutes;
                     
                     _logger.LogWarning($"Hub {hub.HubId} ({hub.Name}) inactive for {inactiveMinutes:F1} minutes. Marking as offline.");

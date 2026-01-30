@@ -129,7 +129,24 @@ namespace SWD.API.Services
                     if (hub != null)
                     {
                         hub.IsOnline = true;
-                        hub.LastHandshake = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+                        try 
+                        {
+                            var vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+                            hub.LastHandshake = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vnTimeZone);
+                        }
+                        catch
+                        {
+                            try 
+                            { 
+                                var vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Bangkok");
+                                hub.LastHandshake = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vnTimeZone);
+                            }
+                            catch
+                            {
+                                // Fallback for systems where neither ID exists
+                                hub.LastHandshake = DateTime.UtcNow.AddHours(7);
+                            }
+                        }
 
                         if (!string.IsNullOrEmpty(data.v5) || !string.IsNullOrEmpty(data.v6))
                         {
