@@ -78,14 +78,20 @@ namespace SWD.API.Controllers
         {
             try
             {
+                // Validate sensor name
                 if (string.IsNullOrWhiteSpace(request.Name))
                     return BadRequest(new { message = "Tên cảm biến không được để trống" });
 
-                if (request.HubId <= 0)
-                    return BadRequest(new { message = "HubId không hợp lệ" });
+                if (request.Name.Length < 2)
+                    return BadRequest(new { message = "Tên cảm biến phải có ít nhất 2 ký tự" });
 
+                // Validate HubId
+                if (request.HubId <= 0)
+                    return BadRequest(new { message = "HubId không hợp lệ. Vui lòng chọn Hub cho cảm biến" });
+
+                // Validate TypeId
                 if (request.TypeId <= 0)
-                    return BadRequest(new { message = "TypeId không hợp lệ" });
+                    return BadRequest(new { message = "TypeId không hợp lệ. Vui lòng chọn loại cảm biến" });
 
                 var sensor = new Sensor
                 {
@@ -118,6 +124,18 @@ namespace SWD.API.Controllers
             }
             catch (Exception ex)
             {
+                // Handle specific errors
+                if (ex.Message.Contains("foreign key") || ex.Message.Contains("FK_"))
+                {
+                    if (ex.Message.Contains("HubId"))
+                        return BadRequest(new { message = "HubId không tồn tại trong hệ thống. Vui lòng chọn Hub hợp lệ" });
+                    if (ex.Message.Contains("TypeId"))
+                        return BadRequest(new { message = "TypeId không tồn tại trong hệ thống. Vui lòng chọn loại cảm biến hợp lệ" });
+                }
+
+                if (ex.Message.Contains("duplicate") || ex.Message.Contains("unique"))
+                    return BadRequest(new { message = "Tên cảm biến đã tồn tại trong Hub này. Vui lòng sử dụng tên khác" });
+
                 return BadRequest(new { message = "Lỗi khi đăng ký cảm biến: " + ex.Message });
             }
         }
@@ -133,11 +151,24 @@ namespace SWD.API.Controllers
         {
             try
             {
+                // Validate sensor ID
+                if (id <= 0)
+                    return BadRequest(new { message = "SensorId không hợp lệ" });
+
+                // Check if sensor exists
+                var sensor = await _sensorService.GetSensorByIdAsync(id);
+                if (sensor == null)
+                    return NotFound(new { message = "Không tìm thấy cảm biến với ID: " + id });
+
                 DateTime fromDate;
                 DateTime toDate;
 
                 if (from.HasValue && to.HasValue)
                 {
+                    // Validate date range
+                    if (from.Value > to.Value)
+                        return BadRequest(new { message = "Ngày bắt đầu không được lớn hơn ngày kết thúc" });
+
                     fromDate = from.Value.Date;
                     toDate = to.Value.Date.AddDays(1).AddTicks(-1);
                 }
@@ -161,9 +192,14 @@ namespace SWD.API.Controllers
 
                 return Ok(new
                 {
-                    message = "Lấy dữ liệu đo của cảm biến thành công",
+                    message = readingDtos.Count > 0 
+                        ? "Lấy dữ liệu đo của cảm biến thành công" 
+                        : "Không có dữ liệu đo trong khoảng thời gian này",
                     sensorId = id,
+                    sensorName = sensor.Name,
                     count = readingDtos.Count,
+                    fromDate = from,
+                    toDate = to,
                     data = readingDtos
                 });
             }
@@ -184,8 +220,16 @@ namespace SWD.API.Controllers
         {
             try
             {
+                // Validate sensor ID
                 if (sensorId <= 0)
                     return BadRequest(new { message = "SensorId không hợp lệ" });
+
+                // Validate value range (reasonable limits)
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                    return BadRequest(new { message = "Giá trị đo không hợp lệ (NaN hoặc Infinity)" });
+
+                if (value < -1000 || value > 10000)
+                    return BadRequest(new { message = "Giá trị đo nằm ngoài phạm vi cho phép (-1000 đến 10000)" });
 
                 await _sensorService.ProcessReadingAsync(sensorId, value);
                 return Ok(new
@@ -198,9 +242,14 @@ namespace SWD.API.Controllers
             }
             catch (Exception ex)
             {
+                // Check if sensor doesn't exist
+                if (ex.Message.Contains("not found") || ex.Message.Contains("does not exist"))
+                    return NotFound(new { message = "Không tìm thấy cảm biến với ID: " + sensorId });
+
                 return BadRequest(new
                 {
                     message = "Lỗi khi xử lý dữ liệu telemetry",
+                    sensorId = sensorId,
                     error = ex.Message
                 });
             }

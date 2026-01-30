@@ -152,11 +152,27 @@ namespace SWD.API.Controllers
         {
             try
             {
+                // Validate rule name
                 if (string.IsNullOrWhiteSpace(request.Name))
                     return BadRequest(new { message = "Tên quy tắc không được để trống" });
 
+                if (request.Name.Length < 2)
+                    return BadRequest(new { message = "Tên quy tắc phải có ít nhất 2 ký tự" });
+
+                // Validate SensorId
                 if (request.SensorId <= 0)
-                    return BadRequest(new { message = "SensorId không hợp lệ" });
+                    return BadRequest(new { message = "SensorId không hợp lệ. Vui lòng chọn cảm biến cho quy tắc" });
+
+                // Validate Min/Max values
+                if (request.MinVal.HasValue && request.MaxVal.HasValue)
+                {
+                    if (request.MinVal.Value >= request.MaxVal.Value)
+                        return BadRequest(new { message = "Giá trị tối thiểu phải nhỏ hơn giá trị tối đa" });
+                }
+
+                // Validate condition type
+                if (string.IsNullOrWhiteSpace(request.ConditionType))
+                    return BadRequest(new { message = "ConditionType không được để trống" });
 
                 var rule = new AlertRule
                 {
@@ -177,11 +193,22 @@ namespace SWD.API.Controllers
                     message = "Tạo quy tắc cảnh báo thành công",
                     ruleId = rule.RuleId,
                     sensorId = rule.SensorId,
-                    name = rule.Name
+                    name = rule.Name,
+                    conditionType = rule.ConditionType
                 });
             }
             catch (Exception ex)
             {
+                // Handle foreign key constraint
+                if (ex.Message.Contains("foreign key") || ex.Message.Contains("FK_"))
+                {
+                    if (ex.Message.Contains("SensorId"))
+                        return BadRequest(new { message = "SensorId không tồn tại trong hệ thống. Vui lòng chọn cảm biến hợp lệ" });
+                }
+
+                if (ex.Message.Contains("duplicate") || ex.Message.Contains("unique"))
+                    return BadRequest(new { message = "Quy tắc cảnh báo tương tự đã tồn tại cho cảm biến này" });
+
                 return BadRequest(new { message = "Lỗi khi tạo quy tắc cảnh báo: " + ex.Message });
             }
         }

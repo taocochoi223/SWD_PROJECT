@@ -109,6 +109,10 @@ namespace SWD.API.Controllers
         {
             try
             {
+                // Validate siteId
+                if (siteId <= 0)
+                    return BadRequest(new { message = "SiteId không hợp lệ" });
+
                 var s = await _siteService.GetSiteHierarchyByIdAsync(siteId);
                 if (s == null)
                 {
@@ -140,7 +144,16 @@ namespace SWD.API.Controllers
                     }).ToList() ?? new List<HubDashboardDto>()
                 };
 
-                return Ok(new { message = "Lấy thông tin dashboard theo địa điểm thành công", data = siteDto });
+                var hubCount = siteDto.Hubs.Count;
+                var message = hubCount > 0 
+                    ? "Lấy thông tin dashboard theo địa điểm thành công" 
+                    : "Lấy thông tin thành công nhưng địa điểm này chưa có Hub nào";
+
+                return Ok(new { 
+                    message = message, 
+                    data = siteDto,
+                    hubCount = hubCount
+                });
             }
             catch (Exception ex)
             {

@@ -69,8 +69,16 @@ namespace SWD.API.Controllers
         {
             try
             {
+                // Validate site name
                 if (string.IsNullOrWhiteSpace(request.Name))
                     return BadRequest(new { message = "Tên địa điểm không được để trống" });
+
+                if (request.Name.Length < 2)
+                    return BadRequest(new { message = "Tên địa điểm phải có ít nhất 2 ký tự" });
+
+                // Validate OrgId
+                if (request.OrgId <= 0)
+                    return BadRequest(new { message = "OrgId không hợp lệ. Địa điểm phải thuộc một tổ chức" });
 
                 var site = new Site
                 {
@@ -98,6 +106,16 @@ namespace SWD.API.Controllers
             }
             catch (Exception ex)
             {
+                // Handle foreign key constraint
+                if (ex.Message.Contains("foreign key") || ex.Message.Contains("FK_"))
+                {
+                    if (ex.Message.Contains("OrgId"))
+                        return BadRequest(new { message = "OrgId không tồn tại trong hệ thống. Vui lòng chọn tổ chức hợp lệ" });
+                }
+
+                if (ex.Message.Contains("duplicate") || ex.Message.Contains("unique"))
+                    return BadRequest(new { message = "Tên địa điểm đã tồn tại trong tổ chức này. Vui lòng sử dụng tên khác" });
+
                 return BadRequest(new { message = "Lỗi khi tạo địa điểm: " + ex.Message });
             }
         }
@@ -142,9 +160,24 @@ namespace SWD.API.Controllers
         {
             try
             {
+                // Validate site ID
+                if (id <= 0)
+                    return BadRequest(new { message = "SiteId không hợp lệ" });
+
                 var existingSite = await _siteService.GetSiteByIdAsync(id);
                 if (existingSite == null)
                     return NotFound(new { message = "Không tìm thấy địa điểm với ID: " + id });
+
+                // Validate name
+                if (string.IsNullOrWhiteSpace(request.Name))
+                    return BadRequest(new { message = "Tên địa điểm không được để trống" });
+
+                if (request.Name.Length < 2)
+                    return BadRequest(new { message = "Tên địa điểm phải có ít nhất 2 ký tự" });
+
+                // Validate OrgId
+                if (request.OrgId <= 0)
+                    return BadRequest(new { message = "OrgId không hợp lệ" });
 
                 existingSite.OrgId = request.OrgId;
                 existingSite.Name = request.Name;
@@ -153,10 +186,21 @@ namespace SWD.API.Controllers
 
                 await _siteService.UpdateSiteAsync(existingSite);
 
-                return Ok(new { message = "Cập nhật địa điểm thành công", siteId = existingSite.SiteId });
+                return Ok(new { 
+                    message = "Cập nhật địa điểm thành công", 
+                    siteId = existingSite.SiteId,
+                    name = existingSite.Name
+                });
             }
             catch (Exception ex)
             {
+                // Handle foreign key constraint
+                if (ex.Message.Contains("foreign key") || ex.Message.Contains("FK_"))
+                {
+                    if (ex.Message.Contains("OrgId"))
+                        return BadRequest(new { message = "OrgId không tồn tại trong hệ thống. Vui lòng chọn tổ chức hợp lệ" });
+                }
+
                 return BadRequest(new { message = "Lỗi khi cập nhật địa điểm: " + ex.Message });
             }
         }
@@ -170,16 +214,36 @@ namespace SWD.API.Controllers
         {
             try
             {
+                // Validate site ID
+                if (id <= 0)
+                    return BadRequest(new { message = "SiteId không hợp lệ" });
+
                 var existingSite = await _siteService.GetSiteByIdAsync(id);
                 if (existingSite == null)
                     return NotFound(new { message = "Không tìm thấy địa điểm với ID: " + id });
 
+                // Check if site has hubs
+                var hubCount = existingSite.Hubs?.Count ?? 0;
+                if (hubCount > 0)
+                    return BadRequest(new { 
+                        message = $"Không thể xóa địa điểm này vì còn {hubCount} Hub đang hoạt động. Vui lòng xóa hoặc chuyển các Hub trước",
+                        hubCount = hubCount
+                    });
+
                 await _siteService.DeleteSiteAsync(id);
 
-                return Ok(new { message = "Xóa địa điểm thành công", siteId = id });
+                return Ok(new { 
+                    message = "Xóa địa điểm thành công", 
+                    siteId = id,
+                    name = existingSite.Name
+                });
             }
             catch (Exception ex)
             {
+                // Handle constraint violations
+                if (ex.Message.Contains("constraint") || ex.Message.Contains("REFERENCE"))
+                    return BadRequest(new { message = "Không thể xóa địa điểm này vì còn dữ liệu liên quan (Hub, user, v.v.). Vui lòng xóa dữ liệu liên quan trước" });
+
                 return BadRequest(new { message = "Lỗi khi xóa địa điểm: " + ex.Message });
             }
         }
