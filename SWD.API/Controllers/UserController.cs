@@ -38,6 +38,11 @@ namespace SWD.API.Controllers
             if (!System.Text.RegularExpressions.Regex.IsMatch(request.Email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
                 return BadRequest(new { message = "Email không đúng định dạng. VD: example@domain.com" });
 
+            // Check if email already exists
+            var existingUser = await _userService.GetUserByEmailAsync(request.Email);
+            if (existingUser != null)
+                return BadRequest(new { message = "Email này đã được sử dụng. Vui lòng sử dụng email khác" });
+
             // Validate full name
             if (string.IsNullOrWhiteSpace(request.FullName))
                 return BadRequest(new { message = "Tên người dùng không được để trống" });
