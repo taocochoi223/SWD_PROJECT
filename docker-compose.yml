@@ -10,8 +10,10 @@ services:
       - "5000:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      # SendGrid Email Configuration (get API key from https://sendgrid.com)
-      - SENDGRID_API_KEY=your_sendgrid_api_key_here
-      - EMAIL_FROM=noreply@winmart-iot.com
-      - EMAIL_FROM_NAME=WinMart IoT System
+
+      # Gmail SMTP Configuration
+      - EMAIL_FROM=caohuutritl1234@gmail.com
+      - EMAIL_FROM_NAME=Smart Weather Data Lab
+      - EMAIL_APP_PASSWORD=jekvdpbmlqkwjbpf
+
     restart: always
