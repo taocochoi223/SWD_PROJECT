@@ -14,11 +14,13 @@ namespace SWD.API.Controllers
     {
         private readonly IUserService _userService;
         private readonly IEmailService _emailService;
+        private readonly ILogger<UserController> _logger;
 
-        public UserController(IUserService userService, IEmailService emailService)
+        public UserController(IUserService userService, IEmailService emailService, ILogger<UserController> logger)
         {
             _userService = userService;
             _emailService = emailService;
+            _logger = logger;
         }
 
         /// <summary>
@@ -82,12 +84,19 @@ namespace SWD.API.Controllers
                 {
                     try
                     {
+                        _logger.LogInformation($"Attempting to send email to {request.Email}");
                         await _emailService.SendEmailAsync(request.Email!, subject, body);
+                        _logger.LogInformation($"Email sent successfully to {request.Email}");
                     }
                     catch (Exception emailEx)
                     {
-                        // Log error nhưng không ảnh hưởng response
-                        Console.WriteLine($"Email sending failed: {emailEx.Message}");
+                        // Log error chi tiết
+                        _logger.LogError(emailEx, $"Email sending FAILED to {request.Email}. Error: {emailEx.Message}");
+                        _logger.LogError($"Email Exception Type: {emailEx.GetType().Name}");
+                        if (emailEx.InnerException != null)
+                        {
+                            _logger.LogError($"Inner Exception: {emailEx.InnerException.Message}");
+                        }
                     }
                 });
 

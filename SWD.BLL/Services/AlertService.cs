@@ -50,10 +50,8 @@ namespace SWD.BLL.Services
                     }
                 }
 
-                // 3. If Triggered -> Save History & Notify
                 if (isTriggered)
                 {
-                    // Create History
                     var history = new AlertHistory
                     {
                         RuleId = rule.RuleId,
@@ -65,10 +63,8 @@ namespace SWD.BLL.Services
                     };
 
                     await _alertRepo.AddAlertHistoryAsync(history);
-                    await _alertRepo.SaveChangesAsync(); // Cần ID của history để tạo Noti
+                    await _alertRepo.SaveChangesAsync(); 
 
-                    // Create Notification for Users in the same Site
-                    // Tìm Sensor -> Hub -> Site -> Users
                     var sensor = await _sensorRepo.GetSensorByIdAsync(reading.SensorId);
                     if (sensor != null && sensor.Hub != null)
                     {
