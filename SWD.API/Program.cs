@@ -15,6 +15,17 @@ Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "true");
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load environment variables from appsettings για local development
+var envVars = builder.Configuration.GetSection("environmentVariables");
+if (envVars.Exists())
+{
+    foreach (var item in envVars.GetChildren())
+    {
+        Environment.SetEnvironmentVariable(item.Key, item.Value);
+    }
+}
+
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
