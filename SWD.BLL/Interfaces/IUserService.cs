@@ -14,5 +14,6 @@ namespace SWD.BLL.Interfaces
         Task RegisterUserAsync(User user);
         Task UpdateUserAsync(User user);
         Task DeactivateUserAsync(int userId);
+        Task<bool> ChangePasswordAsync(int userId, string currentPassword, string newPassword);
     }
 }
