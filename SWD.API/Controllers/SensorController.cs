@@ -6,7 +6,7 @@ using SWD.DAL.Models;
 
 namespace SWD.API.Controllers
 {
-    [Route("api/sensors")]  // ← ĐỔI từ "api/sensor"
+    [Route("api/sensors")]
     [ApiController]
     [Authorize]
     public class SensorController : ControllerBase
@@ -28,6 +28,9 @@ namespace SWD.API.Controllers
         {
             try
             {
+                var siteIdClaim = User.FindFirst("SiteId")?.Value;  
+                int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
+
                 List<Sensor> sensors;
 
                 if (hub_id.HasValue)
@@ -41,6 +44,10 @@ namespace SWD.API.Controllers
                 else
                 {
                     sensors = await _sensorService.GetAllSensorsAsync();
+                }
+                if(userSiteId.HasValue)
+                {
+                    sensors = sensors.Where(s => s.Hub != null && s.Hub.SiteId == userSiteId.Value).ToList();
                 }
 
                 var sensorDtos = sensors.Select(s => new SensorDto
@@ -60,6 +67,7 @@ namespace SWD.API.Controllers
                 {
                     message = "Lấy danh sách cảm biến thành công",
                     count = sensorDtos.Count,
+                    userSiteId = userSiteId, 
                     data = sensorDtos
                 });
             }
@@ -206,52 +214,6 @@ namespace SWD.API.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { message = "Lỗi khi lấy dữ liệu đo: " + ex.Message });
-            }
-        }
-
-        /// <summary>
-        /// Receive Telemetry - IoT Gateway sends data here
-        /// </summary>
-        [HttpPost("telemetry")]
-        [AllowAnonymous]
-        public async Task<IActionResult> ReceiveTelemetry(
-            [FromQuery] int sensorId,
-            [FromQuery] float value)
-        {
-            try
-            {
-                // Validate sensor ID
-                if (sensorId <= 0)
-                    return BadRequest(new { message = "SensorId không hợp lệ" });
-
-                // Validate value range (reasonable limits)
-                if (float.IsNaN(value) || float.IsInfinity(value))
-                    return BadRequest(new { message = "Giá trị đo không hợp lệ (NaN hoặc Infinity)" });
-
-                if (value < -1000 || value > 10000)
-                    return BadRequest(new { message = "Giá trị đo nằm ngoài phạm vi cho phép (-1000 đến 10000)" });
-
-                await _sensorService.ProcessReadingAsync(sensorId, value);
-                return Ok(new
-                {
-                    message = "Nhận dữ liệu telemetry thành công",
-                    sensorId = sensorId,
-                    value = value,
-                    timestamp = DateTime.UtcNow
-                });
-            }
-            catch (Exception ex)
-            {
-                // Check if sensor doesn't exist
-                if (ex.Message.Contains("not found") || ex.Message.Contains("does not exist"))
-                    return NotFound(new { message = "Không tìm thấy cảm biến với ID: " + sensorId });
-
-                return BadRequest(new
-                {
-                    message = "Lỗi khi xử lý dữ liệu telemetry",
-                    sensorId = sensorId,
-                    error = ex.Message
-                });
             }
         }
 

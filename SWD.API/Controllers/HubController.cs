@@ -21,11 +21,22 @@ namespace SWD.API.Controllers
         /// Get all hubs
         /// </summary>
         [HttpGet]
+        [HttpGet]
         public async Task<IActionResult> GetAllHubsAsync()
         {
             try
             {
+                var siteIdClaim = User.FindFirst("SiteId")?.Value;
+                int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
+
                 var hubs = await _hubService.GetAllHubsAsync();
+
+                // Filter theo Site của user
+                if (userSiteId.HasValue)
+                {
+                    hubs = hubs.Where(h => h.SiteId == userSiteId.Value).ToList();
+                }
+
                 var hubDtos = hubs.Select(h => new HubDto
                 {
                     HubId = h.HubId,
@@ -37,10 +48,12 @@ namespace SWD.API.Controllers
                     SiteName = h.Site?.Name ?? "Unassigned",
                     SensorCount = h.Sensors?.Count ?? 0
                 }).ToList();
+
                 return Ok(new
                 {
                     message = "Lấy danh sách Hub thành công",
                     count = hubDtos.Count,
+                    userSiteId = userSiteId, 
                     data = hubDtos
                 });
             }
@@ -54,13 +67,22 @@ namespace SWD.API.Controllers
         /// Get hub by id
         /// </summary>
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetHubByIdAsync(int id){
+        public async Task<IActionResult> GetHubByIdAsync(int id)
+        {
             try
             {
                 var hub = await _hubService.GetHubByIdAsync(id);
                 if (hub == null)
                     return NotFound(new { message = "Không tìm thấy Hub với ID: " + id });
-                
+
+                var siteIdClaim = User.FindFirst("SiteId")?.Value;
+                int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
+
+                if (userSiteId.HasValue && hub.SiteId != userSiteId.Value)
+                {
+                    return StatusCode(403, new { message = "Bạn không có quyền truy cập Hub này" });
+                }
+
                 var hubDto = new HubDto
                 {
                     HubId = hub.HubId,
@@ -297,6 +319,15 @@ namespace SWD.API.Controllers
                 if (hub == null)
                     return NotFound(new { message = "Không tìm thấy Hub với ID: " + id });
 
+                // KIỂM TRA PHÂN QUYỀN
+                var siteIdClaim = User.FindFirst("SiteId")?.Value;
+                int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
+
+                if (userSiteId.HasValue && hub.SiteId != userSiteId.Value)
+                {
+                    return StatusCode(403, new { message = "Bạn không có quyền truy cập Hub này" });
+                }
+
                 var result = new HubReadingsDto
                 {
                     HubId = hub.HubId,
@@ -339,6 +370,15 @@ namespace SWD.API.Controllers
                 var hub = await _hubService.GetHubByIdAsync(id);
                 if (hub == null)
                     return NotFound(new { message = "Không tìm thấy Hub với ID: " + id });
+
+                // KIỂM TRA PHÂN QUYỀN
+                var siteIdClaim = User.FindFirst("SiteId")?.Value;
+                int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
+
+                if (userSiteId.HasValue && hub.SiteId != userSiteId.Value)
+                {
+                    return StatusCode(403, new { message = "Bạn không có quyền truy cập Hub này" });
+                }
 
                 // Lấy environment sensors từ Service (Temperature, Humidity, Pressure)
                 var envSensors = await _hubService.GetHubCurrentTemperatureAsync(id);
