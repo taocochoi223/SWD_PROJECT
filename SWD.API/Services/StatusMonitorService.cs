@@ -145,6 +145,9 @@ namespace SWD.API.Services
                 timestamp = DateTime.UtcNow
             };
 
+            // Broadcast to all clients
+            await _hubContext.Clients.All.SendAsync("ReceiveHubStatus", statusData);
+
             // Also broadcast to hub-specific group
             await _hubContext.Clients.Group($"hub_{hub.HubId}").SendAsync("ReceiveHubOffline", statusData);
         }
@@ -163,6 +166,7 @@ namespace SWD.API.Services
                 lastUpdate = DateTime.UtcNow
             };
 
+            await _hubContext.Clients.All.SendAsync("ReceiveSensorUpdate", sensorData);
             await _hubContext.Clients.Group($"hub_{hubId}").SendAsync("ReceiveSensorUpdate", sensorData);
         }
 
