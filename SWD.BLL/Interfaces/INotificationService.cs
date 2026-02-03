@@ -9,7 +9,7 @@ namespace SWD.BLL.Interfaces
 {
     public interface INotificationService
     {
-        Task CreateNotificationAsync(int userId, int historyId, string message);
+        Task CreateNotificationAsync(int userId, long historyId, string message);
         Task<List<Notification>> GetUserNotificationsAsync(int userId);
         Task MarkAsReadAsync(long notificationId);
     }

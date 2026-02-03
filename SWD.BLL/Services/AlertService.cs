@@ -71,7 +71,7 @@ namespace SWD.BLL.Services
                          var users = await _notiRepo.GetUsersBySiteIdAsync(sensor.Hub.SiteId);
                          foreach (var u in users)
                          {
-                             await _notiService.CreateNotificationAsync(u.UserId, (int)history.HistoryId, message); // Warning: HistoryId is bigint? Cast check
+                             await _notiService.CreateNotificationAsync(u.UserId, history.HistoryId, message);
                          }
                     }
                 }
@@ -83,7 +83,7 @@ namespace SWD.BLL.Services
             return await _alertRepo.GetAlertHistoryAsync(sensorId, null, null);
         }
 
-        public async Task<AlertHistory?> GetAlertByIdAsync(int historyId)
+        public async Task<AlertHistory?> GetAlertByIdAsync(long historyId)
         {
             return await _alertRepo.GetAlertHistoryByIdAsync(historyId);
         }
@@ -93,7 +93,7 @@ namespace SWD.BLL.Services
             return await _alertRepo.GetAlertHistoryWithFiltersAsync(status, search);
         }
 
-        public async Task ResolveAlertAsync(int historyId)
+        public async Task ResolveAlertAsync(long historyId)
         {
             var alert = await _alertRepo.GetAlertHistoryByIdAsync(historyId);
             if (alert != null)
@@ -104,7 +104,7 @@ namespace SWD.BLL.Services
             }
         }
 
-        public async Task DeleteAlertAsync(int historyId)
+        public async Task DeleteAlertAsync(long historyId)
         {
             await _alertRepo.DeleteAlertHistoryAsync(historyId);
             await _alertRepo.SaveChangesAsync();
@@ -117,8 +117,24 @@ namespace SWD.BLL.Services
 
         public async Task CreateRuleAsync(AlertRule rule)
         {
-            // Có thể thêm Validate rule ở đây (VD: Max > Min)
             await _alertRepo.CreateRuleAsync(rule);
+            await _alertRepo.SaveChangesAsync();
+        }
+
+        public async Task<AlertRule?> GetRuleByIdAsync(int ruleId)
+        {
+            return await _alertRepo.GetRuleByIdAsync(ruleId);
+        }
+
+        public async Task UpdateRuleAsync(AlertRule rule)
+        {
+            await _alertRepo.UpdateRuleAsync(rule);
+            await _alertRepo.SaveChangesAsync();
+        }
+
+        public async Task DeleteRuleAsync(int ruleId)
+        {
+            await _alertRepo.DeleteRuleAsync(ruleId);
             await _alertRepo.SaveChangesAsync();
         }
     }

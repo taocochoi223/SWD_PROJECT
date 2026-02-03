@@ -58,7 +58,7 @@ namespace SWD.DAL.Repositories.Implementations
                 .ToListAsync();
         }
 
-        public async Task<AlertHistory?> GetAlertHistoryByIdAsync(int historyId)
+        public async Task<AlertHistory?> GetAlertHistoryByIdAsync(long historyId)
         {
             return await _context.AlertHistories
                 .Include(h => h.Sensor)
@@ -93,11 +93,31 @@ namespace SWD.DAL.Repositories.Implementations
             return Task.CompletedTask;
         }
 
-        public async Task DeleteAlertHistoryAsync(int historyId)
+        public async Task DeleteAlertHistoryAsync(long historyId)
         {
             var history = await _context.AlertHistories.FindAsync(historyId);
             if (history != null)
                 _context.AlertHistories.Remove(history);
+        }
+
+        public async Task<AlertRule?> GetRuleByIdAsync(int ruleId)
+        {
+            return await _context.AlertRules
+                .Include(r => r.Sensor)
+                .FirstOrDefaultAsync(r => r.RuleId == ruleId);
+        }
+
+        public Task UpdateRuleAsync(AlertRule rule)
+        {
+            _context.AlertRules.Update(rule);
+            return Task.CompletedTask;
+        }
+
+        public async Task DeleteRuleAsync(int ruleId)
+        {
+            var rule = await _context.AlertRules.FindAsync(ruleId);
+            if (rule != null)
+                _context.AlertRules.Remove(rule);
         }
 
         public async Task SaveChangesAsync()

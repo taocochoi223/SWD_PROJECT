@@ -56,7 +56,7 @@ namespace SWD.API.Controllers
         /// Resolve Alert
         /// </summary>
         [HttpPut("{id}/resolve")]
-        public async Task<IActionResult> ResolveAlertAsync(int id)
+        public async Task<IActionResult> ResolveAlertAsync(long id)
         {
             try
             {
@@ -87,7 +87,7 @@ namespace SWD.API.Controllers
         /// </summary>
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin,ADMIN")]
-        public async Task<IActionResult> DeleteAlertAsync(int id)
+        public async Task<IActionResult> DeleteAlertAsync(long id)
         {
             try
             {
@@ -248,6 +248,93 @@ namespace SWD.API.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { message = "Lỗi khi lấy lịch sử cảnh báo: " + ex.Message });
+            }
+        }
+
+                /// <summary>
+        /// Update Alert Rule
+        /// </summary>
+        [HttpPut("rules/{id}")]
+        [Authorize(Roles = "Admin,ADMIN,Manager,MANAGER")]
+        public async Task<IActionResult> UpdateRuleAsync(int id, [FromBody] UpdateAlertRuleDto request)
+        {
+            try
+            {
+                var rule = await _alertService.GetRuleByIdAsync(id);
+                if (rule == null)
+                    return NotFound(new { message = "Không tìm thấy quy tắc với ID: " + id });
+
+                if (!string.IsNullOrWhiteSpace(request.Name))
+                {
+                    if (request.Name.Length < 2)
+                        return BadRequest(new { message = "Tên quy tắc phải có ít nhất 2 ký tự" });
+                    rule.Name = request.Name;
+                }
+
+                if (!string.IsNullOrWhiteSpace(request.ConditionType))
+                    rule.ConditionType = request.ConditionType;
+
+                if (request.MinVal.HasValue)
+                    rule.MinVal = request.MinVal.Value;
+
+                if (request.MaxVal.HasValue)
+                    rule.MaxVal = request.MaxVal.Value;
+
+                if (rule.MinVal.HasValue && rule.MaxVal.HasValue && rule.MinVal.Value >= rule.MaxVal.Value)
+                    return BadRequest(new { message = "Giá trị tối thiểu phải nhỏ hơn giá trị tối đa" });
+
+                if (!string.IsNullOrWhiteSpace(request.NotificationMethod))
+                    rule.NotificationMethod = request.NotificationMethod;
+
+                if (!string.IsNullOrWhiteSpace(request.Priority))
+                    rule.Priority = request.Priority;
+
+                if (request.IsActive.HasValue)
+                    rule.IsActive = request.IsActive.Value;
+
+                await _alertService.UpdateRuleAsync(rule);
+
+                return Ok(new
+                {
+                    message = "Cập nhật quy tắc thành công",
+                    ruleId = rule.RuleId,
+                    name = rule.Name
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi cập nhật quy tắc: " + ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Delete Alert Rule
+        /// </summary>
+        [HttpDelete("rules/{id}")]
+        [Authorize(Roles = "Admin,ADMIN,Manager,MANAGER")]
+        public async Task<IActionResult> DeleteRuleAsync(int id)
+        {
+            try
+            {
+                var rule = await _alertService.GetRuleByIdAsync(id);
+                if (rule == null)
+                    return NotFound(new { message = "Không tìm thấy quy tắc với ID: " + id });
+
+                await _alertService.DeleteRuleAsync(id);
+
+                return Ok(new
+                {
+                    message = "Xóa quy tắc cảnh báo thành công",
+                    ruleId = id,
+                    name = rule.Name
+                });
+            }
+            catch (Exception ex)
+            {
+                if (ex.Message.Contains("constraint") || ex.Message.Contains("REFERENCE"))
+                    return BadRequest(new { message = "Không thể xóa quy tắc này vì còn lịch sử cảnh báo liên quan" });
+
+                return BadRequest(new { message = "Lỗi khi xóa quy tắc: " + ex.Message });
             }
         }
     }
