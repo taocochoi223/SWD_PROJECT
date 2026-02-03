@@ -51,9 +51,6 @@ namespace SWD.API.Services
             _mqttClient.DisconnectedAsync += MqttClient_DisconnectedAsync;
             _mqttClient.ApplicationMessageReceivedAsync += MqttClient_ApplicationMessageReceivedAsync;
 
-            // Removed blocking ConnectToMqttAsync() call here. 
-            // It is now handled in ExecuteAsync to ensure fast startup.
-
             await base.StartAsync(cancellationToken);
         }
 
@@ -104,8 +101,6 @@ namespace SWD.API.Services
             string payload = Encoding.UTF8.GetString(e.ApplicationMessage.PayloadSegment.ToArray());
             _logger.LogInformation($"Received Message on {topic}: {payload}");
 
-            // Extract Chip ID from topic: eoh/chip/{GatewayToken}/third_party/{CHIP_ID}/data
-            // The Chip ID is the second to last segment
             string[] topicSegments = topic.Split('/');
             if (topicSegments.Length < 2) return;
             string chipId = topicSegments[topicSegments.Length - 2]; 
@@ -123,12 +118,13 @@ namespace SWD.API.Services
 
                     await systemLogService.LogOptionAsync("MQTT-Listener", $"Topic: {topic} | Payload: {payload}");
 
-                    // Look up Hub by MacAddress (which we use to store Chip ID)
-                    var hub = await hubService.GetHubByMacAsync(chipId);
+                    string macAddress = data.v12 ?? chipId;
+                    _logger.LogInformation($"Looking up Hub with MacAddress: '{macAddress}' (from v12: {data.v12}, chipId: {chipId})");
+
+                    var hub = await hubService.GetHubByMacAsync(macAddress);
 
                     if (hub != null)
                     {
-                        // Track if hub was offline before this update
                         bool wasOffline = hub.IsOnline != true;
                         
                         hub.IsOnline = true;
@@ -146,7 +142,6 @@ namespace SWD.API.Services
                             }
                             catch
                             {
-                                // Fallback for systems where neither ID exists
                                 hub.LastHandshake = DateTime.UtcNow.AddHours(7);
                             }
                         }
@@ -165,7 +160,6 @@ namespace SWD.API.Services
 
                         await hubService.UpdateHubAsync(hub);
 
-                        // Only broadcast hub status if it just came back online (status changed)
                         if (wasOffline)
                         {
                             _logger.LogInformation($"Hub {hub.HubId} ({hub.Name}) just came back online, broadcasting status");
@@ -180,12 +174,12 @@ namespace SWD.API.Services
                     }
                     else
                     {
-                         _logger.LogWarning($"Hub with Mac (Chip ID) {chipId} not found in DB.");
+                         _logger.LogWarning($"Hub NOT FOUND! Searched for MacAddress = '{macAddress}'. v12 from payload: '{data.v12}', chipId from topic: '{chipId}'. Please verify hardware is sending correct MAC address in v12 field or database has matching MacAddress.");
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, $"Error processing MQTT message from {chipId}");
+                    _logger.LogError(ex, $"Error processing MQTT message from chipId: {chipId}");
                     await systemLogService.LogOptionAsync("MQTT-Listener", payload, ex.Message);
                 }
             }
@@ -196,17 +190,14 @@ namespace SWD.API.Services
             var sensor = sensors.FirstOrDefault(s => s.Type != null && s.Type.TypeName.Equals(typeName, StringComparison.OrdinalIgnoreCase));
             if (sensor != null)
             {
-                // Process reading and update sensor value
                 await sensorService.ProcessReadingAsync(sensor.SensorId, (float)value);
                 
-                // Auto-set sensor status to Online when receiving data
                 if (sensor.Status != "Online")
                 {
                     await sensorService.UpdateSensorStatusAsync(sensor.SensorId, "Online");
-                    sensor.Status = "Online"; // Update local object for broadcast
+                    sensor.Status = "Online";
                 }
                 
-                // Broadcast sensor update via SignalR
                 await BroadcastSensorUpdate(sensor, (float)value, hubId);
             }
         }
@@ -225,10 +216,8 @@ namespace SWD.API.Services
                 timestamp = DateTime.UtcNow
             };
 
-            // Broadcast to all clients
             await _hubContext.Clients.All.SendAsync("ReceiveSensorUpdate", sensorData);
             
-            // Broadcast to hub-specific group
             await _hubContext.Clients.Group($"hub_{hubId}").SendAsync("ReceiveSensorUpdate", sensorData);
         }
 
@@ -250,7 +239,6 @@ namespace SWD.API.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            // Initial connection attempt in background
             await ConnectToMqttAsync();
 
             while (!stoppingToken.IsCancellationRequested)

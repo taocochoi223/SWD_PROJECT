@@ -8,6 +8,12 @@ namespace SWD.API.Dtos
         public string? v4 { get; set; } // Time
         public string? v5 { get; set; } // Province
         public string? v6 { get; set; } // City
+        public int v7 { get; set; } // Additional field (numeric)
+        public int v8 { get; set; } // Additional field (numeric)
+        public string? v9 { get; set; } // Weather condition
+        public string? v10 { get; set; } // Weather description
+        public string? v11 { get; set; } // Icon
+        public string? v12 { get; set; } // Hub MAC Address
         public string? deviceId { get; set; } // Optional: in case it's in body
     }
 }
