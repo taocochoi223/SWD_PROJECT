@@ -193,7 +193,9 @@ namespace SWD.API.Controllers
                     roleId = user.RoleId,
                     roleName = user.Role?.RoleName,
                     orgId = user.OrgId,
+                    orgName = user.Org?.Name,
                     siteId = user.SiteId,
+                    siteName = user.Site?.Name,
                     isActive = user.IsActive
                 });
             }
@@ -212,7 +214,6 @@ namespace SWD.API.Controllers
         {
             try
             {
-                // Validate user ID
                 if (id <= 0)
                     return BadRequest(new { message = "UserId không hợp lệ" });
 
@@ -314,7 +315,6 @@ namespace SWD.API.Controllers
         {
             try
             {
-                // Validate user ID
                 if (id <= 0)
                     return BadRequest(new { message = "UserId không hợp lệ" });
 

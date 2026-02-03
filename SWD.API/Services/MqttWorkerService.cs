@@ -210,14 +210,12 @@ namespace SWD.API.Services
                 sensorId = sensor.SensorId,
                 sensorName = sensor.Name,
                 typeName = sensor.Type?.TypeName ?? "Unknown",
-                value = value,
+                currentValue = value,
                 unit = sensor.Type?.Unit ?? "",
                 status = sensor.Status,
-                timestamp = DateTime.UtcNow
+                lastUpdate = DateTime.UtcNow
             };
 
-            await _hubContext.Clients.All.SendAsync("ReceiveSensorUpdate", sensorData);
-            
             await _hubContext.Clients.Group($"hub_{hubId}").SendAsync("ReceiveSensorUpdate", sensorData);
         }
 
@@ -233,7 +231,6 @@ namespace SWD.API.Services
                 timestamp = DateTime.UtcNow
             };
 
-            await _hubContext.Clients.All.SendAsync("ReceiveHubStatus", statusData);
             await _hubContext.Clients.Group($"hub_{hub.HubId}").SendAsync("ReceiveHubOnline", statusData);
         }
 

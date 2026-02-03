@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using SWD.API.Hubs;
 using SWD.BLL.Interfaces;
+using SWD.DAL.Models;
 
 namespace SWD.API.Services
 {
@@ -114,6 +115,8 @@ namespace SWD.API.Services
                         {
                             onlineSensorsCount++;
                             await sensorService.UpdateSensorStatusAsync(sensor.SensorId, "Offline");
+                            sensor.Status = "Offline";
+                            await BroadcastSensorOffline(sensor, hub.HubId);
                         }
                     }
 
@@ -142,11 +145,25 @@ namespace SWD.API.Services
                 timestamp = DateTime.UtcNow
             };
 
-            // Broadcast to all clients
-            await _hubContext.Clients.All.SendAsync("ReceiveHubStatus", statusData);
-
             // Also broadcast to hub-specific group
             await _hubContext.Clients.Group($"hub_{hub.HubId}").SendAsync("ReceiveHubOffline", statusData);
+        }
+
+        private async Task BroadcastSensorOffline(Sensor sensor, int hubId)
+        {
+            var sensorData = new
+            {
+                hubId = hubId,
+                sensorId = sensor.SensorId,
+                sensorName = sensor.Name,
+                typeName = sensor.Type?.TypeName ?? "Unknown",
+                currentValue = sensor.CurrentValue,
+                unit = sensor.Type?.Unit ?? "",
+                status = "Offline",
+                lastUpdate = DateTime.UtcNow
+            };
+
+            await _hubContext.Clients.Group($"hub_{hubId}").SendAsync("ReceiveSensorUpdate", sensorData);
         }
 
         public override Task StopAsync(CancellationToken cancellationToken)

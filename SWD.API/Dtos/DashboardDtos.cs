@@ -31,4 +31,10 @@ namespace SWD.API.Dtos
         public DateTime? LastUpdate { get; set; }
         public int TotalReadings { get; set; }
     }
+
+    public class DashboardChartDto 
+    {
+        
+
+    }
 }
