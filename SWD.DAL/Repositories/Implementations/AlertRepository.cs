@@ -95,6 +95,13 @@ namespace SWD.DAL.Repositories.Implementations
 
         public async Task DeleteAlertHistoryAsync(long historyId)
         {
+            var notifications = await _context.Notifications
+                .Where(n => n.HistoryId == historyId)
+                .ToListAsync();
+            
+            if (notifications.Any())
+                _context.Notifications.RemoveRange(notifications);
+
             var history = await _context.AlertHistories.FindAsync(historyId);
             if (history != null)
                 _context.AlertHistories.Remove(history);

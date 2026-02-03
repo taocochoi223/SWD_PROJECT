@@ -83,7 +83,7 @@ namespace SWD.API.Controllers
         }
 
         /// <summary>
-        /// Delete Alert Log
+        /// Delete Alert History
         /// </summary>
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin,ADMIN")]
@@ -251,7 +251,7 @@ namespace SWD.API.Controllers
             }
         }
 
-                /// <summary>
+        /// <summary>
         /// Update Alert Rule
         /// </summary>
         [HttpPut("rules/{id}")]
