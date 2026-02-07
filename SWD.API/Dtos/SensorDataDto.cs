@@ -1,9 +1,10 @@
 namespace SWD.API.Dtos
 {
-    public class ReadingDto
+    public class SensorDataDto
     {
-        public long ReadingId { get; set; }
+        public long DataId { get; set; }
         public int SensorId { get; set; }
+        public int HubId { get; set; }
         public string? SensorName { get; set; }
         public string? SensorTypeName { get; set; }
         public double Value { get; set; }

@@ -82,14 +82,14 @@ namespace SWD.DAL.Repositories.Implementations
             if (from.HasValue && to.HasValue)
             {
                  query = query.Include(h => h.Sensors)
-                              .ThenInclude(s => s.Readings.Where(r => r.RecordedAt >= from && r.RecordedAt <= to));
+                              .ThenInclude(s => s.SensorDatas.Where(r => r.RecordedAt >= from && r.RecordedAt <= to));
             }
             else
             {
                  // Limit to last 100 if no date range to prevent explosion, or just include all
                  // For now, let's include all but maybe user should provide range
                  query = query.Include(h => h.Sensors)
-                              .ThenInclude(s => s.Readings);
+                              .ThenInclude(s => s.SensorDatas);
             }
 
             return await query.FirstOrDefaultAsync(h => h.HubId == hubId);
@@ -100,6 +100,7 @@ namespace SWD.DAL.Repositories.Implementations
             return await _context.Sensors
                 .Include(s => s.Type)
                 .Include(s => s.Hub)
+                .Include(s => s.SensorDatas)
                 .Where(s => s.HubId == hubId && 
                        (s.Type.TypeName.Contains("Temperature") || 
                         s.Type.TypeName.Contains("Nhiệt độ") ||

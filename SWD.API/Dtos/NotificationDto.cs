@@ -3,7 +3,7 @@ namespace SWD.API.Dtos
     public class NotificationDto
     {
         public long NotiId { get; set; }
-        public long HistoryId { get; set; }
+        public int RuleId { get; set; }
         public int UserId { get; set; }
         public string? Message { get; set; }
         public DateTime? SentAt { get; set; }

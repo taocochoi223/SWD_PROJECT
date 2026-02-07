@@ -23,10 +23,10 @@ namespace SWD.BLL.Services
             _notiRepo = notiRepo;
         }
 
-        public async Task CheckAndTriggerAlertAsync(Reading reading)
+        public async Task CheckAndTriggerAlertAsync(SensorData sensorData)
         {
             // 1. Get Active Rules for this Sensor
-            var rules = await _alertRepo.GetActiveRulesBySensorIdAsync(reading.SensorId);
+            var rules = await _alertRepo.GetActiveRulesBySensorIdAsync(sensorData.SensorId);
 
             if (rules == null || !rules.Any()) return;
 
@@ -38,76 +38,37 @@ namespace SWD.BLL.Services
                 // 2. Check Condition
                 if (rule.ConditionType == "MinMax")
                 {
-                    if (rule.MaxVal.HasValue && reading.Value > rule.MaxVal.Value)
+                    if (rule.MaxVal.HasValue && sensorData.Value > rule.MaxVal.Value)
                     {
                         isTriggered = true;
-                        message = $"Cảnh báo: Sensor {reading.SensorId} vượt ngưỡng cho phép (Value: {reading.Value} > Max: {rule.MaxVal})";
+                        message = $"Cảnh báo: Sensor {sensorData.SensorId} vượt ngưỡng cho phép (Value: {sensorData.Value} > Max: {rule.MaxVal})";
                     }
-                    else if (rule.MinVal.HasValue && reading.Value < rule.MinVal.Value)
+                    else if (rule.MinVal.HasValue && sensorData.Value < rule.MinVal.Value)
                     {
                         isTriggered = true;
-                        message = $"Cảnh báo: Sensor {reading.SensorId} dưới ngưỡng cho phép (Value: {reading.Value} < Min: {rule.MinVal})";
+                        message = $"Cảnh báo: Sensor {sensorData.SensorId} dưới ngưỡng cho phép (Value: {sensorData.Value} < Min: {rule.MinVal})";
                     }
                 }
 
                 if (isTriggered)
                 {
-                    var history = new AlertHistory
-                    {
-                        RuleId = rule.RuleId,
-                        SensorId = reading.SensorId,
-                        TriggeredAt = DateTime.Now,
-                        ValueAtTrigger = reading.Value,
-                        Severity = rule.Priority,
-                        Message = message
-                    };
-
-                    await _alertRepo.AddAlertHistoryAsync(history);
-                    await _alertRepo.SaveChangesAsync(); 
-
-                    var sensor = await _sensorRepo.GetSensorByIdAsync(reading.SensorId);
+                    
+                    var sensor = await _sensorRepo.GetSensorByIdAsync(sensorData.SensorId);
                     if (sensor != null && sensor.Hub != null)
                     {
                          var users = await _notiRepo.GetUsersBySiteIdAsync(sensor.Hub.SiteId);
                          foreach (var u in users)
                          {
-                             await _notiService.CreateNotificationAsync(u.UserId, history.HistoryId, message);
+                             // Create notification directly linked to the Rule
+                             // Note: NotificationService might need updating to accept RuleId instead of HistoryId, 
+                             // but for now we assume CreateNotificationAsync handles logic or we adjust parameters.
+                             // Assuming CreateNotificationAsync takes (userId, sourceId, message) - we might need to check its signature.
+                             // Based on previous file reads, Notification has RuleId.
+                             await _notiService.CreateNotificationAsync(u.UserId, rule.RuleId, message);
                          }
                     }
                 }
             }
-        }
-
-        public async Task<List<AlertHistory>> GetAlertHistoryAsync(int? sensorId)
-        {
-            return await _alertRepo.GetAlertHistoryAsync(sensorId, null, null);
-        }
-
-        public async Task<AlertHistory?> GetAlertByIdAsync(long historyId)
-        {
-            return await _alertRepo.GetAlertHistoryByIdAsync(historyId);
-        }
-
-        public async Task<List<AlertHistory>> GetAlertsWithFiltersAsync(string? status, string? search)
-        {
-            return await _alertRepo.GetAlertHistoryWithFiltersAsync(status, search);
-        }
-
-        public async Task ResolveAlertAsync(long historyId)
-        {
-            var alert = await _alertRepo.GetAlertHistoryByIdAsync(historyId);
-            if (alert != null)
-            {
-                alert.ResolvedAt = DateTime.UtcNow;
-                await _alertRepo.UpdateAlertHistoryAsync(alert);
-                await _alertRepo.SaveChangesAsync();
-            }
-        }
-
-        public async Task DeleteAlertAsync(long historyId)
-        {
-            await _alertRepo.DeleteAlertHistoryAsync(historyId);
-            await _alertRepo.SaveChangesAsync();
         }
 
         public async Task<List<AlertRule>> GetAllRulesAsync()

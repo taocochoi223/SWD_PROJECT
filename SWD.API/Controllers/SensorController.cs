@@ -58,8 +58,8 @@ namespace SWD.API.Controllers
                     TypeId = s.TypeId,
                     TypeName = s.Type?.TypeName,
                     SensorName = s.Name,
-                    CurrentValue = s.CurrentValue,
-                    LastUpdate = s.LastUpdate,
+                    CurrentValue = 0,
+                    LastUpdate = null,
                     Status = s.Status
                 }).ToList();
 
@@ -106,9 +106,7 @@ namespace SWD.API.Controllers
                     HubId = request.HubId,
                     TypeId = request.TypeId,
                     Name = request.Name,
-                    Status = "Active",
-                    CurrentValue = 0,
-                    LastUpdate = DateTime.UtcNow
+                    Status = "Active"
                 };
 
                 await _sensorService.RegisterSensorAsync(sensor);
@@ -124,8 +122,8 @@ namespace SWD.API.Controllers
                         TypeId = sensor.TypeId,
                         TypeName = null,
                         SensorName = sensor.Name,
-                        CurrentValue = sensor.CurrentValue,
-                        LastUpdate = sensor.LastUpdate,
+                        CurrentValue = 0,
+                        LastUpdate = null,
                         Status = sensor.Status
                     }
                 });
@@ -188,10 +186,11 @@ namespace SWD.API.Controllers
 
                 var readings = await _sensorService.GetSensorReadingsAsync(id, fromDate, toDate);
 
-                var readingDtos = readings.Select(r => new ReadingDto
+                var readingDtos = readings.Select(r => new SensorDataDto
                 {
-                    ReadingId = r.ReadingId,
+                    DataId = r.DataId,
                     SensorId = r.SensorId,
+                    HubId = r.HubId,
                     SensorName = r.Sensor?.Name,
                     SensorTypeName = r.Sensor?.Type?.TypeName,
                     Value = r.Value,
@@ -236,6 +235,63 @@ namespace SWD.API.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { message = "Lỗi khi lấy danh sách loại cảm biến: " + ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Update Sensor
+        /// </summary>
+        [HttpPut("{id}")]
+        [Authorize(Roles = "Admin,ADMIN,Manager,MANAGER")]
+        public async Task<IActionResult> UpdateSensorAsync(int id, [FromBody] UpdateSensorDto request)
+        {
+            try
+            {
+                if (id <= 0) return BadRequest(new { message = "SensorId không hợp lệ" });
+
+                var sensor = await _sensorService.GetSensorByIdAsync(id);
+                if (sensor == null) return NotFound(new { message = "Không tìm thấy cảm biến" });
+
+                if (!string.IsNullOrEmpty(request.Name))
+                {
+                    if (request.Name.Length < 2) return BadRequest(new { message = "Tên quá ngắn" });
+                    sensor.Name = request.Name;
+                }
+
+                if (request.TypeId.HasValue && request.TypeId > 0)
+                {
+                    sensor.TypeId = request.TypeId.Value;
+                }
+
+                await _sensorService.UpdateSensorAsync(sensor);
+                return Ok(new { message = "Cập nhật cảm biến thành công" });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi cập nhật: " + ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Delete Sensor
+        /// </summary>
+        [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin,ADMIN,Manager,MANAGER")]
+        public async Task<IActionResult> DeleteSensorAsync(int id)
+        {
+            try
+            {
+                if (id <= 0) return BadRequest(new { message = "SensorId không hợp lệ" });
+                
+                var sensor = await _sensorService.GetSensorByIdAsync(id);
+                if (sensor == null) return NotFound(new { message = "Không tìm thấy cảm biến" });
+
+                await _sensorService.DeleteSensorAsync(id);
+                return Ok(new { message = "Xóa cảm biến thành công" });
+            }
+            catch (Exception ex) 
+            {
+                return BadRequest(new { message = "Lỗi xóa cảm biến (Có thể do còn dữ liệu ràng buộc): " + ex.Message });
             }
         }
     }

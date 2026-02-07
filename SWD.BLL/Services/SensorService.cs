@@ -37,7 +37,7 @@ namespace SWD.BLL.Services
             await _sensorRepo.AddSensorAsync(sensor);
             await _sensorRepo.SaveChangesAsync();
         }
-        public async Task<List<Reading>> GetSensorReadingsAsync(int sensorId, DateTime from, DateTime to)
+        public async Task<List<SensorData>> GetSensorReadingsAsync(int sensorId, DateTime from, DateTime to)
         {
             return await _sensorRepo.GetReadingsForChartAsync(sensorId, from, to);
         }
@@ -55,26 +55,20 @@ namespace SWD.BLL.Services
 
         public async Task ProcessReadingAsync(int sensorId, float value)
         {
-            var reading = new Reading
-            {
-                SensorId = sensorId,
-                Value = value,
-                RecordedAt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"))
-            };
-
-            await _sensorRepo.AddReadingAsync(reading);
-
             var sensor = await _sensorRepo.GetSensorByIdAsync(sensorId);
             if (sensor != null)
             {
-                sensor.CurrentValue = value;
-                sensor.LastUpdate = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
-                await _sensorRepo.UpdateSensorAsync(sensor);
+                var sensorData = new SensorData();
+                sensorData.SensorId = sensorId;
+                sensorData.HubId = sensor.HubId; // Inherit HubId from Sensor
+                sensorData.Value = value;
+                sensorData.RecordedAt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+
+                await _sensorRepo.AddReadingAsync(sensorData);
+                await _sensorRepo.SaveChangesAsync();
+
+                await _alertService.CheckAndTriggerAlertAsync(sensorData);
             }
-
-            await _sensorRepo.SaveChangesAsync();
-
-            await _alertService.CheckAndTriggerAlertAsync(reading);
         }
 
         public async Task UpdateSensorStatusAsync(int sensorId, string status)
@@ -86,6 +80,11 @@ namespace SWD.BLL.Services
                 await _sensorRepo.UpdateSensorAsync(sensor);
                 await _sensorRepo.SaveChangesAsync();
             }
+        }
+        public async Task DeleteSensorAsync(int sensorId)
+        {
+            await _sensorRepo.DeleteSensorAsync(sensorId);
+            await _sensorRepo.SaveChangesAsync();
         }
     }
 }

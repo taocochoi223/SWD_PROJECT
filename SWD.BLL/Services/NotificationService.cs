@@ -18,12 +18,12 @@ namespace SWD.BLL.Services
             _repo = repo;
         }
 
-        public async Task CreateNotificationAsync(int userId, long historyId, string message)
+        public async Task CreateNotificationAsync(int userId, int ruleId, string message)
         {
             var noti = new Notification
             {
                 UserId = userId,
-                HistoryId = historyId,
+                RuleId = ruleId,
                 Message = message,
                 IsRead = false,
                 SentAt = DateTime.Now

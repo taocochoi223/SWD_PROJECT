@@ -25,8 +25,8 @@ namespace SWD.DAL.Repositories.Implementations
         {
             // Lấy 20 thông báo mới nhất, sắp xếp mới -> cũ
             return await _context.Notifications
-                .Include(n => n.History) // Kèm thông tin vụ sự cố
-                .ThenInclude(h => h.Sensor) // Kèm tên Sensor bị lỗi
+                .Include(n => n.Rule) // Kèm thông tin rule
+                .ThenInclude(r => r.Sensor) // Kèm tên Sensor bị lỗi
                 .Where(n => n.UserId == userId)
                 .OrderByDescending(n => n.SentAt)
                 .Take(20)

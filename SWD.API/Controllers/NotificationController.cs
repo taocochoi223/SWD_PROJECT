@@ -34,15 +34,15 @@ namespace SWD.API.Controllers
                 var notiDtos = notis.Select(n => new NotificationDto
                 {
                     NotiId = n.NotiId,
-                    HistoryId = n.HistoryId,
+                    RuleId = n.RuleId,
                     UserId = n.UserId,
                     Message = n.Message,
                     SentAt = n.SentAt,
                     IsRead = n.IsRead,
-                    SensorId = n.History?.SensorId,
-                    SensorName = n.History?.Sensor?.Name,
-                    Severity = n.History?.Severity,
-                    TriggeredAt = n.History?.TriggeredAt
+                    SensorId = n.Rule?.SensorId,
+                    SensorName = n.Rule?.Sensor?.Name,
+                    Severity = n.Rule?.Priority, // Map Priority to Severity
+                    TriggeredAt = n.SentAt // Notification sent time is trigger time
                 }).ToList();
 
                 var unreadCount = notiDtos.Count(n => n.IsRead == false);

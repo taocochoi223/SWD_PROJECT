@@ -53,6 +53,8 @@ namespace SWD.DAL.Repositories.Implementations
 
         public async Task<List<Sensor>> GetAllSensorsWithDetailsAsync()
         {
+
+            
             return await _context.Sensors
                 .Include(s => s.Hub)
                 .Include(s => s.Type)
@@ -60,17 +62,17 @@ namespace SWD.DAL.Repositories.Implementations
                 .ToListAsync();
         }
 
-        public async Task AddReadingAsync(Reading reading)
+        public async Task AddReadingAsync(SensorData sensorData)
         {
-            await _context.Readings.AddAsync(reading);
+            await _context.SensorDatas.AddAsync(sensorData);
         }
 
-        public async Task<List<Reading>> GetReadingsForChartAsync(
+        public async Task<List<SensorData>> GetReadingsForChartAsync(
             int sensorId,
             DateTime from,
             DateTime to)
         {
-            return await _context.Readings
+            return await _context.SensorDatas
                 .AsNoTracking()
                 .Include(r => r.Sensor)
                     .ThenInclude(s => s.Type)
@@ -90,6 +92,15 @@ namespace SWD.DAL.Repositories.Implementations
         public async Task SaveChangesAsync()
         {
             await _context.SaveChangesAsync();
+        }
+
+        public async Task DeleteSensorAsync(int sensorId)
+        {
+            var sensor = await _context.Sensors.FindAsync(sensorId);
+            if (sensor != null)
+            {
+                _context.Sensors.Remove(sensor);
+            }
         }
     }
 }

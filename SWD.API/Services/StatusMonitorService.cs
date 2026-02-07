@@ -160,7 +160,7 @@ namespace SWD.API.Services
                 sensorId = sensor.SensorId,
                 sensorName = sensor.Name,
                 typeName = sensor.Type?.TypeName ?? "Unknown",
-                currentValue = sensor.CurrentValue,
+                currentValue = 0,
                 unit = sensor.Type?.Unit ?? "",
                 status = "Offline",
                 lastUpdate = DateTime.UtcNow

@@ -58,7 +58,7 @@ namespace SWD.DAL.Repositories.Implementations
             return await _context.Sites
                 .Include(s => s.Hubs)
                     .ThenInclude(h => h.Sensors)
-                        .ThenInclude(se => se.Readings)
+                        .ThenInclude(se => se.SensorDatas)
                  .Include(s => s.Hubs)
                     .ThenInclude(h => h.Sensors)
                         .ThenInclude(se => se.Type)
@@ -71,7 +71,7 @@ namespace SWD.DAL.Repositories.Implementations
             return await _context.Sites
                 .Include(s => s.Hubs)
                     .ThenInclude(h => h.Sensors)
-                        .ThenInclude(se => se.Readings)
+                        .ThenInclude(se => se.SensorDatas)
                  .Include(s => s.Hubs)
                     .ThenInclude(h => h.Sensors)
                         .ThenInclude(se => se.Type)

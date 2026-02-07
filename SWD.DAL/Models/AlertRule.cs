@@ -23,7 +23,7 @@ public partial class AlertRule
 
     public bool? IsActive { get; set; }
 
-    public virtual ICollection<AlertHistory> AlertHistories { get; set; } = new List<AlertHistory>();
+    public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 
     public virtual Sensor Sensor { get; set; } = null!;
 }

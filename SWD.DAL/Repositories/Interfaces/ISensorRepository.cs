@@ -7,12 +7,13 @@ namespace SWD.DAL.Repositories.Interfaces
         Task<Sensor?> GetSensorByIdAsync(int sensorId);
         Task<List<Sensor>> GetSensorsByHubIdAsync(int hubId);
         Task<List<Sensor>> GetAllSensorsWithDetailsAsync();
-        Task<List<Reading>> GetReadingsForChartAsync(int sensorId,DateTime from, DateTime to);
+        Task<List<SensorData>> GetReadingsForChartAsync(int sensorId,DateTime from, DateTime to);
         Task<List<SensorType>> GetAllSensorTypesAsync();
         Task<List<Sensor>> GetSensorsByTypeIdAsync(int typeId);
         Task UpdateSensorAsync(Sensor sensor);
         Task AddSensorAsync(Sensor sensor);
-        Task AddReadingAsync(Reading reading);
+        Task DeleteSensorAsync(int sensorId);
+        Task AddReadingAsync(SensorData sensorData);
         Task SaveChangesAsync();
     }
 }

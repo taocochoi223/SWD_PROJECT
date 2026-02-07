@@ -7,7 +7,7 @@ public partial class Notification
 {
     public long NotiId { get; set; }
 
-    public long HistoryId { get; set; }
+    public int RuleId { get; set; }
 
     public int UserId { get; set; }
 
@@ -17,7 +17,7 @@ public partial class Notification
 
     public bool? IsRead { get; set; }
 
-    public virtual AlertHistory History { get; set; } = null!;
+    public virtual AlertRule Rule { get; set; } = null!;
 
     public virtual User User { get; set; } = null!;
 }

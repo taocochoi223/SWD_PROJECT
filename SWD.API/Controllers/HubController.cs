@@ -21,7 +21,7 @@ namespace SWD.API.Controllers
         /// Get all hubs
         /// </summary>
         [HttpGet]
-        [HttpGet]
+
         public async Task<IActionResult> GetAllHubsAsync()
         {
             try
@@ -339,7 +339,7 @@ namespace SWD.API.Controllers
                         Name = s.Name,
                         TypeName = s.Type?.TypeName ?? "Unknown",
                         Unit = s.Type?.Unit ?? "",
-                        Readings = s.Readings?.Select(r => new ReadingValueDto
+                        Readings = s.SensorDatas?.Select(r => new ReadingValueDto
                         {
                             RecordedAt = r.RecordedAt ?? DateTime.MinValue,
                             Value = (float)r.Value
@@ -363,7 +363,7 @@ namespace SWD.API.Controllers
         /// Get Current Temperature - Lấy dữ liệu môi trường hiện tại của Hub (Temperature, Humidity, Pressure)
         /// </summary>
         [HttpGet("{id}/current-temperature")]
-        public async Task<IActionResult> GetCurrentTemperatureAsync(int id)
+        public async Task<IActionResult> GetCurrentEnvironmentDataAsync(int id)
         {
             try
             {
@@ -380,7 +380,6 @@ namespace SWD.API.Controllers
                     return StatusCode(403, new { message = "Bạn không có quyền truy cập Hub này" });
                 }
 
-                // Lấy environment sensors từ Service (Temperature, Humidity, Pressure)
                 var envSensors = await _hubService.GetHubCurrentTemperatureAsync(id);
 
                 if (!envSensors.Any())
@@ -391,9 +390,9 @@ namespace SWD.API.Controllers
                     sensorId = s.SensorId,
                     sensorName = s.Name,
                     typeName = s.Type?.TypeName,
-                    currentValue = s.CurrentValue,
+                    currentValue = s.SensorDatas?.OrderByDescending(d => d.RecordedAt).FirstOrDefault()?.Value ?? 0,
                     unit = s.Type?.Unit ?? "",
-                    lastUpdate = s.LastUpdate,
+                    lastUpdate = s.SensorDatas?.OrderByDescending(d => d.RecordedAt).FirstOrDefault()?.RecordedAt,
                     status = s.Status
                 }).ToList();
 

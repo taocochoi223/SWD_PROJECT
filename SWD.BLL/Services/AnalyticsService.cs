@@ -161,7 +161,7 @@ namespace SWD.BLL.Services
                 .Where(r => Math.Abs(r.Value - mean) > 2 * stdDev)
                 .Select(r => new
                 {
-                    readingId = r.ReadingId,
+                    dataId = r.DataId,
                     value = r.Value,
                     recordedAt = r.RecordedAt,
                     deviation = Math.Abs(r.Value - mean) / stdDev
