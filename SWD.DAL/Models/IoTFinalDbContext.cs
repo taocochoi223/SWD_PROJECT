@@ -69,7 +69,7 @@ public partial class IoTFinalDbContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false);
             entity.Property(e => e.IsActive).HasDefaultValue(true);
-            entity.Property(e => e.Name).HasMaxLength(100);
+            entity.Property(e => e.Name).HasMaxLength(200);
             entity.Property(e => e.NotificationMethod)
                 .HasMaxLength(50)
                 .IsUnicode(false);

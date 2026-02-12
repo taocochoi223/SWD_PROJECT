@@ -59,7 +59,6 @@ namespace SWD.API.Controllers
                     TypeName = s.Type?.TypeName,
                     SensorName = s.Name,
                     CurrentValue = 0,
-                    LastUpdate = null,
                     Status = s.Status
                 }).ToList();
 
@@ -123,7 +122,7 @@ namespace SWD.API.Controllers
                         TypeName = null,
                         SensorName = sensor.Name,
                         CurrentValue = 0,
-                        LastUpdate = null,
+
                         Status = sensor.Status
                     }
                 });

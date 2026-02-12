@@ -9,7 +9,6 @@ namespace SWD.API.Dtos
         public string? TypeName { get; set; }
         public string? SensorName { get; set; }
         public double? CurrentValue { get; set; }
-        public DateTime? LastUpdate { get; set; }
         public string? Status { get; set; }
     }
 }

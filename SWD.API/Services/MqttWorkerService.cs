@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using MQTTnet;
 using MQTTnet.Client;
 using SWD.API.Dtos;
@@ -22,7 +23,6 @@ namespace SWD.API.Services
         private IMqttClient _mqttClient = null!;
         private MqttClientOptions _mqttOptions = null!;
 
-        // Configurations from appsettings.json
         private string Broker => _configuration["MqttSettings:Broker"] ?? "mqtt1.eoh.io";
         private int Port => int.Parse(_configuration["MqttSettings:Port"] ?? "1883");
         private string GatewayToken => _configuration["MqttSettings:GatewayToken"] ?? "";
@@ -119,12 +119,11 @@ namespace SWD.API.Services
                     await systemLogService.LogOptionAsync("MQTT-Listener", $"Topic: {topic} | Payload: {payload}");
 
                     string macAddress = data.v12 ?? chipId;
-                    _logger.LogInformation($"Looking up Hub with MacAddress: '{macAddress}' (from v12: {data.v12}, chipId: {chipId})");
-
                     var hub = await hubService.GetHubByMacAsync(macAddress);
 
                     if (hub != null)
                     {
+                        // 1. Hub Status Update (Offline -> Online)
                         bool wasOffline = hub.IsOnline != true;
                         
                         hub.IsOnline = true;
@@ -135,26 +134,16 @@ namespace SWD.API.Services
                         }
                         catch
                         {
-                            try 
-                            { 
-                                var vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Bangkok");
-                                hub.LastHandshake = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, vnTimeZone);
-                            }
-                            catch
-                            {
-                                hub.LastHandshake = DateTime.UtcNow.AddHours(7);
-                            }
+                            hub.LastHandshake = DateTime.UtcNow.AddHours(7);
                         }
 
+                        // Update Hub info (address etc)
                         if (!string.IsNullOrEmpty(data.v5) || !string.IsNullOrEmpty(data.v6))
                         {
                             if (hub.Site != null)
                             {
                                 string newAddress = $"{data.v6}, {data.v5}".Trim(',', ' ');
-                                if (!string.IsNullOrEmpty(newAddress))
-                                {
-                                     hub.Site.Address = newAddress;
-                                }
+                                if (!string.IsNullOrEmpty(newAddress)) hub.Site.Address = newAddress;
                             }
                         }
 
@@ -162,25 +151,26 @@ namespace SWD.API.Services
 
                         if (wasOffline)
                         {
-                            _logger.LogInformation($"Hub {hub.HubId} ({hub.Name}) just came back online, broadcasting status");
-                            await BroadcastHubStatus(hub);
+                            // Broadcast Hub Status Change (Requirement 2)
+                            await BroadcastHubStatusChange(hub.HubId, true);
                         }
 
+                        // 2. Hub Environment Data Update (Requirement 3: Temp, Hum, Pressure)
+                        // This broadcasts to the specific hub group
+                        await BroadcastHubEnvironmentData(hub.HubId, data.v1, data.v2, data.v3);
+
+
+                        // 3. Process Sensor Readings & Status (Requirement 1)
                         var sensors = await sensorService.GetSensorsByHubIdAsync(hub.HubId);
 
                         await ProcessSensorReading(sensorService, sensors, "Temperature", data.v1, hub.HubId);
                         await ProcessSensorReading(sensorService, sensors, "Humidity", data.v2, hub.HubId);
                         await ProcessSensorReading(sensorService, sensors, "Pressure", data.v3, hub.HubId);
                     }
-                    else
-                    {
-                         _logger.LogWarning($"Hub NOT FOUND! Searched for MacAddress = '{macAddress}'. v12 from payload: '{data.v12}', chipId from topic: '{chipId}'. Please verify hardware is sending correct MAC address in v12 field or database has matching MacAddress.");
-                    }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, $"Error processing MQTT message from chipId: {chipId}");
-                    await systemLogService.LogOptionAsync("MQTT-Listener", payload, ex.Message);
                 }
             }
         }
@@ -196,50 +186,50 @@ namespace SWD.API.Services
                 {
                     await sensorService.UpdateSensorStatusAsync(sensor.SensorId, "Online");
                     sensor.Status = "Online";
+                    
+                    // Broadcast Sensor Status Change (Requirement 1)
+                    await BroadcastSensorStatusChange(sensor.SensorId, "Online", hubId);
                 }
-                
-                await BroadcastSensorUpdate(sensor, (float)value, hubId);
             }
         }
 
-        private async Task BroadcastSensorUpdate(Sensor sensor, float value, int hubId)
+        private async Task BroadcastHubStatusChange(int hubId, bool isOnline)
         {
-            var sensorData = new
+             await _hubContext.Clients.All.SendAsync("ReceiveHubStatusChange", new
             {
                 hubId = hubId,
-                sensorId = sensor.SensorId,
-                sensorName = sensor.Name,
-                typeName = sensor.Type?.TypeName ?? "Unknown",
-                currentValue = value,
-                unit = sensor.Type?.Unit ?? "",
-                status = sensor.Status,
-                lastUpdate = DateTime.UtcNow
-            };
-
-            await _hubContext.Clients.All.SendAsync("ReceiveSensorUpdate", sensorData);
-            await _hubContext.Clients.Group($"hub_{hubId}").SendAsync("ReceiveSensorUpdate", sensorData);
+                isOnline = isOnline,
+                updatedAt = DateTime.UtcNow
+            });
         }
 
-        private async Task BroadcastHubStatus(DAL.Models.Hub hub)
+        private async Task BroadcastSensorStatusChange(int sensorId, string status, int hubId)
         {
-            var statusData = new
+            await _hubContext.Clients.All.SendAsync("ReceiveSensorStatusChange", new
             {
-                hubId = hub.HubId,
-                hubName = hub.Name,
-                macAddress = hub.MacAddress,
-                isOnline = hub.IsOnline,
-                lastHandshake = hub.LastHandshake,
-                timestamp = DateTime.UtcNow
-            };
+                sensorId = sensorId,
+                status = status,
+                hubId = hubId,
+                updatedAt = DateTime.UtcNow
+            });
+        }
 
-            await _hubContext.Clients.All.SendAsync("ReceiveHubStatus", statusData);
-            await _hubContext.Clients.Group($"hub_{hub.HubId}").SendAsync("ReceiveHubOnline", statusData);
+        private async Task BroadcastHubEnvironmentData(int hubId, double temperature, double humidity, double pressure)
+        {
+            // Broadcasts to clients viewing the specific hub details
+            await _hubContext.Clients.Group($"hub_{hubId}").SendAsync("ReceiveHubEnvironmentData", new
+            {
+                hubId = hubId,
+                temperature = temperature,
+                humidity = humidity,
+                pressure = pressure,
+                updatedAt = DateTime.UtcNow
+            });
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             await ConnectToMqttAsync();
-
             while (!stoppingToken.IsCancellationRequested)
             {
                 await Task.Delay(1000, stoppingToken);
