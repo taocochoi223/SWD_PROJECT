@@ -152,7 +152,7 @@ namespace SWD.API.Services
                         if (wasOffline)
                         {
                             // Broadcast Hub Status Change (Requirement 2)
-                            await BroadcastHubStatusChange(hub.HubId, true);
+                            await BroadcastHubStatusChange(hub.HubId, true, hub.LastHandshake);
                         }
 
                         // 2. Hub Environment Data Update (Requirement 3: Temp, Hum, Pressure)
@@ -181,7 +181,10 @@ namespace SWD.API.Services
             if (sensor != null)
             {
                 await sensorService.ProcessReadingAsync(sensor.SensorId, (float)value);
-                
+
+                // Broadcast real-time sensor data to clients on the sensor detail page
+                await BroadcastSensorData(sensor.SensorId, value, hubId);
+
                 if (sensor.Status != "Online")
                 {
                     await sensorService.UpdateSensorStatusAsync(sensor.SensorId, "Online");
@@ -193,12 +196,13 @@ namespace SWD.API.Services
             }
         }
 
-        private async Task BroadcastHubStatusChange(int hubId, bool isOnline)
+        private async Task BroadcastHubStatusChange(int hubId, bool isOnline, DateTime? lastHandshake = null)
         {
-             await _hubContext.Clients.All.SendAsync("ReceiveHubStatusChange", new
+            await _hubContext.Clients.All.SendAsync("ReceiveHubStatusChange", new
             {
                 hubId = hubId,
                 isOnline = isOnline,
+                lastHandshake = lastHandshake,
                 updatedAt = DateTime.UtcNow
             });
         }
@@ -224,6 +228,18 @@ namespace SWD.API.Services
                 humidity = humidity,
                 pressure = pressure,
                 updatedAt = DateTime.UtcNow
+            });
+        }
+
+        private async Task BroadcastSensorData(int sensorId, double value, int hubId)
+        {
+            // Broadcasts to clients on the sensor detail page (chart real-time)
+            await _hubContext.Clients.Group($"sensor_{sensorId}").SendAsync("ReceiveSensorData", new
+            {
+                sensorId = sensorId,
+                value = value,
+                hubId = hubId,
+                recordedAt = DateTime.UtcNow
             });
         }
 

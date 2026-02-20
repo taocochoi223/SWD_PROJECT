@@ -86,7 +86,7 @@ namespace SWD.API.Services
                 await hubService.UpdateHubAsync(hub);
 
                 // 2. Broadcast Hub Status Change (Requirement 2)
-                await BroadcastHubStatusChange(hub.HubId, false);
+                await BroadcastHubStatusChange(hub.HubId, false, hub.LastHandshake);
 
                 // 3. Update Sensors Status to Offline
                 var sensors = await sensorService.GetSensorsByHubIdAsync(hub.HubId);
@@ -103,13 +103,14 @@ namespace SWD.API.Services
             }
         }
 
-        private async Task BroadcastHubStatusChange(int hubId, bool isOnline)
+        private async Task BroadcastHubStatusChange(int hubId, bool isOnline, DateTime? lastHandshake = null)
         {
             // For /api/hubs clients
             await _hubContext.Clients.All.SendAsync("ReceiveHubStatusChange", new
             {
                 hubId = hubId,
                 isOnline = isOnline,
+                lastHandshake = lastHandshake,
                 updatedAt = DateTime.UtcNow
             });
         }

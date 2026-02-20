@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace SWD.API.Hubs
 {
+    [Authorize]
     public class SensorHub : Hub
     {
         private readonly ILogger<SensorHub> _logger;
@@ -34,6 +36,19 @@ namespace SWD.API.Hubs
         {
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"hub_{hubId}");
             await Clients.Caller.SendAsync("LeftGroup", $"Left group hub_{hubId}");
+        }
+
+        // Client joins a specific Sensor group to receive real-time chart data for that sensor
+        public async Task JoinSensorGroup(int sensorId)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"sensor_{sensorId}");
+            await Clients.Caller.SendAsync("JoinedGroup", $"Joined group sensor_{sensorId}");
+        }
+
+        public async Task LeaveSensorGroup(int sensorId)
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"sensor_{sensorId}");
+            await Clients.Caller.SendAsync("LeftGroup", $"Left group sensor_{sensorId}");
         }
     }
 }
