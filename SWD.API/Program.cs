@@ -158,6 +158,10 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddAuthorization();
+
+// Health Check for UptimeRobot keep-alive (prevent Render sleep)
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 app.UseSwagger();
@@ -170,6 +174,9 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// Health Check endpoint - UptimeRobot sẽ ping vào đây mỗi 5 phút
+app.MapHealthChecks("/health");
 
 // Map SignalR Hub
 app.MapHub<SWD.API.Hubs.SensorHub>("/sensorHub");
