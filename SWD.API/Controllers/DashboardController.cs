@@ -15,17 +15,20 @@ namespace SWD.API.Controllers
         private readonly IHubService _hubService;
         private readonly ISensorService _sensorService;
         private readonly IAlertService _alertService;
+        private readonly INotificationService _notiService;
 
         public DashboardController(
             ISiteService siteService,
             IHubService hubService,
             ISensorService sensorService,
-            IAlertService alertService)
+            IAlertService alertService,
+            INotificationService notiService)
         {
             _siteService = siteService;
             _hubService = hubService;
             _sensorService = sensorService;
             _alertService = alertService;
+            _notiService = notiService;
         }
 
         /// <summary>
@@ -217,6 +220,57 @@ namespace SWD.API.Controllers
             {
                 return BadRequest(new { message = "Lỗi khi lấy dữ liệu môi trường: " + ex.Message });
             }
+        }
+
+        /// <summary>
+        /// Get Latest Alerts for Dashboard
+        /// </summary>
+        [HttpGet("alerts")]
+        public async Task<IActionResult> GetLatestAlertsAsync([FromQuery] int limit = 5)
+        {
+            try
+            {
+                // Lấy UserId từ Token
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim))
+                    return Unauthorized(new { message = "Không tìm thấy thông tin định danh người dùng" });
+
+                int userId = int.Parse(userIdClaim);
+                var notis = await _notiService.GetUserNotificationsAsync(userId);
+                
+                var alertData = notis.Take(limit).Select(n => new {
+                    id = n.NotiId,
+                    sensorName = n.Rule?.Sensor?.Name ?? "Unknown Sensor",
+                    location = $"{n.Rule?.Sensor?.Hub?.Site?.Name} - {n.Rule?.Sensor?.Hub?.Name}",
+                    value = ExtractValueFromMessage(n.Message),
+                    metricUnit = n.Rule?.Sensor?.Type?.Unit ?? "",
+                    severity = n.Rule?.Priority ?? "Info",
+                    status = "Active",
+                    time = n.SentAt
+                }).ToList();
+
+                return Ok(new { data = alertData });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy danh sách cảnh báo: " + ex.Message });
+            }
+        }
+
+        private double? ExtractValueFromMessage(string? message)
+        {
+            if (string.IsNullOrEmpty(message)) return null;
+            try
+            {
+                // Format: "... (Value: 45.5 > Max: 40)" hoặc "... (Value: -5.2 < Min: 0)"
+                var parts = message.Split(new[] { "Value: ", " >", " <", ")" }, StringSplitOptions.None);
+                if (parts.Length > 1)
+                {
+                    if (double.TryParse(parts[1], out double val)) return val;
+                }
+            }
+            catch { }
+            return null;
         }
     }
 }

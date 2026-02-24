@@ -23,10 +23,15 @@ namespace SWD.DAL.Repositories.Implementations
 
         public async Task<List<Notification>> GetNotificationsByUserIdAsync(int userId)
         {
-            // Lấy 20 thông báo mới nhất, sắp xếp mới -> cũ
+            // Lấy 20 thông báo mới nhất, kèm đầy đủ thông tin địa điểm và loại cảm biến
             return await _context.Notifications
-                .Include(n => n.Rule) // Kèm thông tin rule
-                .ThenInclude(r => r.Sensor) // Kèm tên Sensor bị lỗi
+                .Include(n => n.Rule)
+                    .ThenInclude(r => r.Sensor)
+                        .ThenInclude(s => s.Hub)
+                            .ThenInclude(h => h.Site)
+                .Include(n => n.Rule)
+                    .ThenInclude(r => r.Sensor)
+                        .ThenInclude(s => s.Type)
                 .Where(n => n.UserId == userId)
                 .OrderByDescending(n => n.SentAt)
                 .Take(20)

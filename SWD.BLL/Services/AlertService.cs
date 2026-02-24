@@ -30,8 +30,10 @@ namespace SWD.BLL.Services
         {
             // 1. Get Active Rules for this Sensor
             var rules = await _alertRepo.GetActiveRulesBySensorIdAsync(sensorData.SensorId);
-
             if (rules == null || !rules.Any()) return;
+
+            var sensor = await _sensorRepo.GetSensorByIdAsync(sensorData.SensorId);
+            double roundedValue = Math.Round(sensorData.Value, 2);
 
             foreach (var rule in rules)
             {
@@ -44,32 +46,28 @@ namespace SWD.BLL.Services
                     if (rule.MaxVal.HasValue && sensorData.Value > rule.MaxVal.Value)
                     {
                         isTriggered = true;
-                        message = $"Cảnh báo: Sensor {sensorData.SensorId} vượt ngưỡng cho phép (Value: {sensorData.Value} > Max: {rule.MaxVal})";
+                        message = $"Cảnh báo: Sensor {sensor?.Name ?? sensorData.SensorId.ToString()} vượt ngưỡng (Value: {roundedValue} > Max: {rule.MaxVal})";
                     }
                     else if (rule.MinVal.HasValue && sensorData.Value < rule.MinVal.Value)
                     {
                         isTriggered = true;
-                        message = $"Cảnh báo: Sensor {sensorData.SensorId} dưới ngưỡng cho phép (Value: {sensorData.Value} < Min: {rule.MinVal})";
+                        message = $"Cảnh báo: Sensor {sensor?.Name ?? sensorData.SensorId.ToString()} dưới ngưỡng (Value: {roundedValue} < Min: {rule.MinVal})";
                     }
                 }
 
                 if (isTriggered)
                 {
-                    
-                    var sensor = await _sensorRepo.GetSensorByIdAsync(sensorData.SensorId);
                     if (sensor != null && sensor.Hub != null)
                     {
                          var users = await _notiRepo.GetUsersBySiteIdAsync(sensor.Hub.SiteId);
                          foreach (var u in users)
                          {
-                              // Create notification record
                               await _notiService.CreateNotificationAsync(u.UserId, rule.RuleId, message);
                               
-                              // Push real-time signal to FE
                               await _realtimeService.SendAlertSignalAsync(u.UserId, new {
                                   ruleName = rule.Name,
                                   sensorName = sensor.Name,
-                                  value = sensorData.Value,
+                                  value = roundedValue,
                                   message = message,
                                   priority = rule.Priority,
                                   siteName = sensor.Hub?.Site?.Name
