@@ -171,6 +171,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 // --- 6. PIPELINE (APP RUN) ---
+builder.Services.AddAuthorization();
 var app = builder.Build();
 
 app.UseSwagger();
@@ -190,6 +191,8 @@ app.MapHealthChecks("/health");
 
 // Map Controllers & Hubs
 app.MapControllers();
+
+// Map SignalR Hub
 app.MapHub<SWD.API.Hubs.SensorHub>("/sensorHub");
 
 app.Run();
