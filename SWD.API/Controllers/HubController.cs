@@ -126,11 +126,7 @@ namespace SWD.API.Controllers
                 if (string.IsNullOrWhiteSpace(request.MacAddress))
                     return BadRequest(new { message = "Địa chỉ MAC không được để trống" });
 
-                // MAC address format validation (XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX)
-                // var macPattern = @"^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$";
-                // if (!System.Text.RegularExpressions.Regex.IsMatch(request.MacAddress, macPattern))
-                //     return BadRequest(new { message = "Địa chỉ MAC không đúng định dạng. VD: AA:BB:CC:DD:EE:FF hoặc AA-BB-CC-DD-EE-FF" });
-
+            
                 // Validate SiteId
                 if (request.SiteId <= 0)
                     return BadRequest(new { message = "SiteId không hợp lệ. Vui lòng chọn địa điểm cho Hub" });
@@ -359,56 +355,5 @@ namespace SWD.API.Controllers
             }
         }
 
-        /// <summary>
-        /// Get Current Temperature - Lấy dữ liệu môi trường hiện tại của Hub (Temperature, Humidity, Pressure)
-        /// </summary>
-        [HttpGet("{id}/current-temperature")]
-        public async Task<IActionResult> GetCurrentEnvironmentDataAsync(int id)
-        {
-            try
-            {
-                var hub = await _hubService.GetHubByIdAsync(id);
-                if (hub == null)
-                    return NotFound(new { message = "Không tìm thấy Hub với ID: " + id });
-
-                // KIỂM TRA PHÂN QUYỀN
-                var siteIdClaim = User.FindFirst("SiteId")?.Value;
-                int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
-
-                if (userSiteId.HasValue && hub.SiteId != userSiteId.Value)
-                {
-                    return StatusCode(403, new { message = "Bạn không có quyền truy cập Hub này" });
-                }
-
-                var envSensors = await _hubService.GetHubCurrentTemperatureAsync(id);
-
-                if (!envSensors.Any())
-                    return NotFound(new { message = "Hub này không có cảm biến môi trường (Temperature/Humidity/Pressure)" });
-
-                var environmentData = envSensors.Select(s => new
-                {
-                    sensorId = s.SensorId,
-                    sensorName = s.Name,
-                    typeName = s.Type?.TypeName,
-                    currentValue = s.SensorDatas?.OrderByDescending(d => d.RecordedAt).FirstOrDefault()?.Value ?? 0,
-                    unit = s.Type?.Unit ?? "",
-                    lastUpdate = s.SensorDatas?.OrderByDescending(d => d.RecordedAt).FirstOrDefault()?.RecordedAt,
-                    status = s.Status
-                }).ToList();
-
-                return Ok(new
-                {
-                    message = "Lấy dữ liệu môi trường hiện tại của Hub thành công",
-                    hubId = id,
-                    hubName = hub.Name,
-                    sensorCount = environmentData.Count,
-                    data = environmentData
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = "Lỗi khi lấy dữ liệu môi trường: " + ex.Message });
-            }
-        }
     }
 }
