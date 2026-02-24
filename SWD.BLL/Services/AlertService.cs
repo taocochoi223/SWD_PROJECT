@@ -9,18 +9,21 @@ namespace SWD.BLL.Services
         private readonly ISensorRepository _sensorRepo;
         private readonly IAlertRepository _alertRepo;
         private readonly INotificationService _notiService;
-        private readonly INotificationRepository _notiRepo; // To find users to notify
+        private readonly INotificationRepository _notiRepo;
+        private readonly IRealtimeService _realtimeService;
 
         public AlertService(
             ISensorRepository sensorRepo,
             IAlertRepository alertRepo,
             INotificationService notiService,
-            INotificationRepository notiRepo)
+            INotificationRepository notiRepo,
+            IRealtimeService realtimeService)
         {
             _sensorRepo = sensorRepo;
             _alertRepo = alertRepo;
             _notiService = notiService;
             _notiRepo = notiRepo;
+            _realtimeService = realtimeService;
         }
 
         public async Task CheckAndTriggerAlertAsync(SensorData sensorData)
@@ -59,12 +62,18 @@ namespace SWD.BLL.Services
                          var users = await _notiRepo.GetUsersBySiteIdAsync(sensor.Hub.SiteId);
                          foreach (var u in users)
                          {
-                             // Create notification directly linked to the Rule
-                             // Note: NotificationService might need updating to accept RuleId instead of HistoryId, 
-                             // but for now we assume CreateNotificationAsync handles logic or we adjust parameters.
-                             // Assuming CreateNotificationAsync takes (userId, sourceId, message) - we might need to check its signature.
-                             // Based on previous file reads, Notification has RuleId.
-                             await _notiService.CreateNotificationAsync(u.UserId, rule.RuleId, message);
+                              // Create notification record
+                              await _notiService.CreateNotificationAsync(u.UserId, rule.RuleId, message);
+                              
+                              // Push real-time signal to FE
+                              await _realtimeService.SendAlertSignalAsync(u.UserId, new {
+                                  ruleName = rule.Name,
+                                  sensorName = sensor.Name,
+                                  value = sensorData.Value,
+                                  message = message,
+                                  priority = rule.Priority,
+                                  siteName = sensor.Hub?.Site?.Name
+                              });
                          }
                     }
                 }
