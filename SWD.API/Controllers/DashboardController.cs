@@ -161,5 +161,62 @@ namespace SWD.API.Controllers
                 return BadRequest(new { message = "Lỗi khi lấy thông tin dashboard: " + ex.Message });
             }
         }
+
+        /// <summary>
+        /// Get Current Environment Data - Lấy dữ liệu môi trường hiện tại của Hub (Temperature, Humidity, Pressure)
+        /// </summary>
+        [HttpGet("hub/{id}/current-environment")]
+        public async Task<IActionResult> GetCurrentEnvironmentDataAsync(int id)
+        {
+            try
+            {
+                var hub = await _hubService.GetHubByIdAsync(id);
+                if (hub == null)
+                    return NotFound(new { message = "Không tìm thấy Hub với ID: " + id });
+
+                // KIỂM TRA PHÂN QUYỀN
+                var siteIdClaim = User.FindFirst("SiteId")?.Value;
+                int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
+
+                if (userSiteId.HasValue && hub.SiteId != userSiteId.Value)
+                {
+                    return StatusCode(403, new { message = "Bạn không có quyền truy cập Hub này" });
+                }
+
+                var envSensors = await _hubService.GetHubCurrentTemperatureAsync(id);
+
+                if (!envSensors.Any())
+                    return NotFound(new { message = "Hub này không có cảm biến môi trường (Temperature/Humidity/Pressure)" });
+
+                var result = new HubReadingsDto
+                {
+                    HubId = hub.HubId,
+                    Name = hub.Name,
+                    MacAddress = hub.MacAddress,
+                    Sensors = envSensors.Select(s => new SensorReadingDto
+                    {
+                        SensorId = s.SensorId,
+                        Name = s.Name,
+                        TypeName = s.Type?.TypeName ?? "Unknown",
+                        Unit = s.Type?.Unit ?? "",
+                        Readings = s.SensorDatas?.OrderByDescending(d => d.RecordedAt).Take(1).Select(r => new ReadingValueDto
+                        {
+                            RecordedAt = r.RecordedAt ?? DateTime.MinValue,
+                            Value = (float)r.Value
+                        }).ToList() ?? new List<ReadingValueDto>()
+                    }).ToList()
+                };
+
+                return Ok(new
+                {
+                    message = "Lấy dữ liệu môi trường hiện tại của Hub thành công",
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy dữ liệu môi trường: " + ex.Message });
+            }
+        }
     }
 }
