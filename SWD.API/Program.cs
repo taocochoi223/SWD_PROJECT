@@ -105,6 +105,7 @@ builder.Services.AddScoped<IOrganizationService, OrganizationService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IRealtimeService, RealtimeService>();
 
 // Hosted Services (Background Jobs)
 builder.Services.AddHostedService<SWD.API.Services.MqttWorkerService>();
