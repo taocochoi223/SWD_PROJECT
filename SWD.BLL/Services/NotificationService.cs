@@ -18,7 +18,7 @@ namespace SWD.BLL.Services
             _repo = repo;
         }
 
-        public async Task CreateNotificationAsync(int userId, int ruleId, string message)
+        public async Task<Notification> CreateNotificationAsync(int userId, int ruleId, string message)
         {
             var noti = new Notification
             {
@@ -31,6 +31,7 @@ namespace SWD.BLL.Services
 
             await _repo.AddNotificationAsync(noti);
             await _repo.SaveChangesAsync();
+            return noti;
         }
 
         public async Task<List<Notification>> GetUserNotificationsAsync(int userId)

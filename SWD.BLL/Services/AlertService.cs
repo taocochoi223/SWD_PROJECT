@@ -62,15 +62,18 @@ namespace SWD.BLL.Services
                          var users = await _notiRepo.GetUsersBySiteIdAsync(sensor.Hub.SiteId);
                          foreach (var u in users)
                          {
-                              await _notiService.CreateNotificationAsync(u.UserId, rule.RuleId, message);
+                              var newNoti = await _notiService.CreateNotificationAsync(u.UserId, rule.RuleId, message);
                               
+                              // Push real-time signal to FE - KHỚP ĐỊNH DẠNG DASHBOARD API
                               await _realtimeService.SendAlertSignalAsync(u.UserId, new {
-                                  ruleName = rule.Name,
+                                  id = newNoti.NotiId,
                                   sensorName = sensor.Name,
+                                  location = $"{sensor.Hub?.Site?.Name} - {sensor.Hub?.Name}",
                                   value = roundedValue,
-                                  message = message,
-                                  priority = rule.Priority,
-                                  siteName = sensor.Hub?.Site?.Name
+                                  metricUnit = sensor.Type?.Unit ?? "",
+                                  severity = rule.Priority ?? "Info",
+                                  status = "Active",
+                                  time = newNoti.SentAt
                               });
                          }
                     }
