@@ -8,14 +8,14 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.OpenApi.Models;
-
-
-// Workaround for Render/Docker inotify limits
-Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "true");
+using Microsoft.AspNetCore.Authentication.Cookies; // Thêm cái này
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Load environment variables from appsettings για local development
+// --- 1. CONFIG MÔI TRƯỜNG & BIẾN ENV ---
+// Workaround for Render/Docker inotify limits
+Environment.SetEnvironmentVariable("DOTNET_USE_POLLING_FILE_WATCHER", "true");
+
 var envVars = builder.Configuration.GetSection("environmentVariables");
 if (envVars.Exists())
 {
@@ -25,10 +25,11 @@ if (envVars.Exists())
     }
 }
 
-
+// --- 2. ADD SERVICES ---
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
+// Gộp Swagger Config lại làm 1
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -38,6 +39,7 @@ builder.Services.AddSwaggerGen(options =>
         Description = "IoT Data Analysis API with JWT Authentication"
     });
 
+    // Cấu hình nút Authorize nhập Token
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -62,11 +64,17 @@ builder.Services.AddSwaggerGen(options =>
             new string[] {}
         }
     });
+
+    // Load XML Comments (nếu file tồn tại)
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        options.IncludeXmlComments(xmlPath);
+    }
 });
 
-// 1. Đăng ký DB Context
-//builder.Services.AddDbContext<IoTFinalDbContext>();
-// 1. Đăng ký DB Context (DÙNG ENV Connection String)
+// Config DB Context
 builder.Services.AddDbContext<IoTFinalDbContext>(options =>
 {
     options.UseSqlServer(
@@ -75,60 +83,62 @@ builder.Services.AddDbContext<IoTFinalDbContext>(options =>
     );
 });
 
-
-// 2. Đăng ký Repositories (DAL)
+// --- 3. ĐĂNG KÝ REPOSITORIES & SERVICES ---
+// Repositories
 builder.Services.AddScoped<ISensorRepository, SensorRepository>();
 builder.Services.AddScoped<IAlertRepository, AlertRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<ILogRepository, LogRepository>();
-
-// Infrastructure Repositories (Separated)
 builder.Services.AddScoped<ISiteRepository, SiteRepository>();
 builder.Services.AddScoped<IHubRepository, HubRepository>();
 builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
-// 3. Đăng ký Services (BLL)
+// Services
 builder.Services.AddScoped<ISensorService, SensorService>();
 builder.Services.AddScoped<IAlertService, AlertService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ISystemLogService, SystemLogService>();
-
-// Infrastructure Services (Separated)
 builder.Services.AddScoped<ISiteService, SiteService>();
 builder.Services.AddScoped<IHubService, HubService>();
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();
 builder.Services.AddScoped<IUserService, UserService>();
-
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 
-// 79. Register Hosted Services
+// Hosted Services (Background Jobs)
 builder.Services.AddHostedService<SWD.API.Services.MqttWorkerService>();
 builder.Services.AddHostedService<SWD.API.Services.StatusMonitorService>();
 
-// 80. Add SignalR
+// SignalR & HealthCheck
 builder.Services.AddSignalR();
+builder.Services.AddHealthChecks(); // Quan trọng cho UptimeRobot
 
-// 81. Configure CORS for SignalR
+// --- 4. CONFIG CORS (Quan Trọng Cho FE) ---
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("SignalRPolicy", policy =>
+    options.AddPolicy("MyCorsPolicy", policy =>
     {
         policy.WithOrigins(
                 "http://localhost:3000",
                 "http://localhost:5173",
                 "https://swd-fe-project.vercel.app"
+                // Thêm domain FE của bạn vào đây nếu có thay đổi
               )
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials();
+              .AllowCredentials(); // BẮT BUỘC ĐỂ LOGIN HOẠT ĐỘNG
     });
 });
 
-// 4. Cấu hình JWT Authentication
+// --- 5. AUTHENTICATION & COOKIE POLICY ---
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
+var secretKey = jwtSettings["SecretKey"];
+
+if (string.IsNullOrEmpty(secretKey))
+{
+    throw new InvalidOperationException("JWT SecretKey is missing in appsettings.json");
+}
 
 builder.Services.AddAuthentication(options =>
 {
@@ -150,35 +160,40 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddSwaggerGen(c =>
+// !!! KHẮC PHỤC LỖI LOGIN CHÉO TRANG !!!
+builder.Services.ConfigureApplicationCookie(options =>
 {
-    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    c.IncludeXmlComments(xmlPath);
+    // Cho phép Cookie đi qua domain khác (FE -> BE)
+    options.Cookie.SameSite = SameSiteMode.None;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Render có HTTPS nên dùng Always
+    options.Cookie.HttpOnly = true;
+    options.ExpireTimeSpan = TimeSpan.FromDays(1);
 });
 
+// --- 6. PIPELINE (APP RUN) ---
 builder.Services.AddAuthorization();
-
-// Health Check for UptimeRobot keep-alive (prevent Render sleep)
-builder.Services.AddHealthChecks();
-
 var app = builder.Build();
 
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// Enable CORS
-app.UseCors("SignalRPolicy");
+// Thứ tự cực kỳ quan trọng:
+// 1. Cors -> 2. Authen -> 3. Author -> 4. Controllers
+app.UseCors("MyCorsPolicy"); 
 
 app.UseHttpsRedirection();
+
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers();
 
-// Health Check endpoint - UptimeRobot sẽ ping vào đây mỗi 5 phút
+// Endpoint cho UptimeRobot (Trả về status 200)
 app.MapHealthChecks("/health");
+
+// Map Controllers & Hubs
+app.MapControllers();
 
 // Map SignalR Hub
 app.MapHub<SWD.API.Hubs.SensorHub>("/sensorHub");
 
 app.Run();
+
