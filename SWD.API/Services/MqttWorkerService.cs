@@ -225,7 +225,7 @@ namespace SWD.API.Services
 
                 if (isOnline)
                 {
-                    // Device just connected → set all hubs online immediately
+                    // Device just connected → set all hubs + sensors online immediately
                     foreach (var hub in allHubs)
                     {
                         if (hub.IsOnline != true)
@@ -235,6 +235,17 @@ namespace SWD.API.Services
                             await hubService.UpdateHubAsync(hub);
                             await BroadcastHubStatusChange(hub.HubId, true, hub.LastHandshake);
                             _logger.LogInformation($"[StatusMessage] Hub {hub.HubId} ({hub.Name}) → ONLINE");
+
+                            // Also set all sensors of this hub to Online immediately
+                            var sensors = await sensorService.GetSensorsByHubIdAsync(hub.HubId);
+                            foreach (var sensor in sensors)
+                            {
+                                if (sensor.Status != "Online")
+                                {
+                                    await sensorService.UpdateSensorStatusAsync(sensor.SensorId, "Online");
+                                    await BroadcastSensorStatusChange(sensor.SensorId, "Online", hub.HubId);
+                                }
+                            }
                         }
                     }
                 }
