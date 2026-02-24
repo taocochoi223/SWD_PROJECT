@@ -27,6 +27,7 @@ namespace SWD.API.Services
         private int Port => int.Parse(_configuration["MqttSettings:Port"] ?? "1883");
         private string GatewayToken => _configuration["MqttSettings:GatewayToken"] ?? "";
         private string TopicTemplate => _configuration["MqttSettings:TopicTemplate"] ?? "eoh/chip/{0}/third_party/+/data";
+        private string StatusTopicTemplate => _configuration["MqttSettings:StatusTopicTemplate"] ?? "eoh/chip/{0}/is_online";
 
         public MqttWorkerService(ILogger<MqttWorkerService> logger, IServiceScopeFactory scopeFactory, IConfiguration configuration, IHubContext<SensorHub> hubContext)
         {
@@ -74,14 +75,17 @@ namespace SWD.API.Services
         private async Task MqttClient_ConnectedAsync(MqttClientConnectedEventArgs arg)
         {
             _logger.LogInformation("Connected to MQTT Broker.");
-            string subscribeTopic = string.Format(TopicTemplate, GatewayToken);
+            string dataTopic = string.Format(TopicTemplate, GatewayToken);
+            string statusTopic = string.Format(StatusTopicTemplate, GatewayToken);
             
             var subscribeOptions = new MqttClientSubscribeOptionsBuilder()
-                .WithTopicFilter(f => f.WithTopic(subscribeTopic))
+                .WithTopicFilter(f => f.WithTopic(dataTopic))
+                .WithTopicFilter(f => f.WithTopic(statusTopic))
                 .Build();
             
             await _mqttClient.SubscribeAsync(subscribeOptions);
-            _logger.LogInformation($"Subscribed to wildcard topic: {subscribeTopic}");
+            _logger.LogInformation($"Subscribed to data topic: {dataTopic}");
+            _logger.LogInformation($"Subscribed to status topic: {statusTopic}");
         }
 
         private Task MqttClient_DisconnectedAsync(MqttClientDisconnectedEventArgs arg)
@@ -100,6 +104,14 @@ namespace SWD.API.Services
             string topic = e.ApplicationMessage.Topic;
             string payload = Encoding.UTF8.GetString(e.ApplicationMessage.PayloadSegment.ToArray());
             _logger.LogInformation($"Received Message on {topic}: {payload}");
+
+            // Check if this is a status message (birth/close/will from is_online topic)
+            string statusTopic = string.Format(StatusTopicTemplate, GatewayToken);
+            if (topic == statusTopic)
+            {
+                await HandleStatusMessage(payload);
+                return;
+            }
 
             string[] topicSegments = topic.Split('/');
             if (topicSegments.Length < 2) return;
@@ -172,6 +184,87 @@ namespace SWD.API.Services
                 {
                     _logger.LogError(ex, $"Error processing MQTT message from chipId: {chipId}");
                 }
+            }
+        }
+
+        /// <summary>
+        /// Handles birth/close/will messages from the is_online topic.
+        /// Payload: {"ol":1} = online, {"ol":0} = offline
+        /// This provides INSTANT on/off detection instead of waiting for polling timeout.
+        /// </summary>
+        private async Task HandleStatusMessage(string payload)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(payload);
+                if (!doc.RootElement.TryGetProperty("ol", out var olValue)) return;
+
+                int onlineStatus = olValue.GetInt32();
+                bool isOnline = onlineStatus == 1;
+
+                _logger.LogInformation($"[StatusMessage] Device status changed: {(isOnline ? "ONLINE" : "OFFLINE")}");
+
+                using var scope = _scopeFactory.CreateScope();
+                var hubService = scope.ServiceProvider.GetRequiredService<IHubService>();
+                var sensorService = scope.ServiceProvider.GetRequiredService<ISensorService>();
+                var systemLogService = scope.ServiceProvider.GetRequiredService<ISystemLogService>();
+
+                await systemLogService.LogOptionAsync("MQTT-Status", $"Device {(isOnline ? "ONLINE" : "OFFLINE")} | Payload: {payload}");
+
+                DateTime vietnamNow;
+                try
+                {
+                    vietnamNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+                }
+                catch
+                {
+                    vietnamNow = DateTime.UtcNow.AddHours(7);
+                }
+
+                var allHubs = await hubService.GetAllHubsAsync();
+
+                if (isOnline)
+                {
+                    // Device just connected → set all hubs online immediately
+                    foreach (var hub in allHubs)
+                    {
+                        if (hub.IsOnline != true)
+                        {
+                            hub.IsOnline = true;
+                            hub.LastHandshake = vietnamNow;
+                            await hubService.UpdateHubAsync(hub);
+                            await BroadcastHubStatusChange(hub.HubId, true, hub.LastHandshake);
+                            _logger.LogInformation($"[StatusMessage] Hub {hub.HubId} ({hub.Name}) → ONLINE");
+                        }
+                    }
+                }
+                else
+                {
+                    // Device disconnected → set all online hubs to offline immediately
+                    var onlineHubs = allHubs.Where(h => h.IsOnline == true).ToList();
+                    foreach (var hub in onlineHubs)
+                    {
+                        hub.IsOnline = false;
+                        await hubService.UpdateHubAsync(hub);
+                        await BroadcastHubStatusChange(hub.HubId, false, hub.LastHandshake);
+                        _logger.LogInformation($"[StatusMessage] Hub {hub.HubId} ({hub.Name}) → OFFLINE");
+
+                        // Also set all sensors of this hub to Offline
+                        var sensors = await sensorService.GetSensorsByHubIdAsync(hub.HubId);
+                        foreach (var sensor in sensors)
+                        {
+                            if (sensor.Status != "Offline")
+                            {
+                                await sensorService.UpdateSensorStatusAsync(sensor.SensorId, "Offline");
+                                await BroadcastSensorStatusChange(sensor.SensorId, "Offline", hub.HubId);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing status message");
             }
         }
 
