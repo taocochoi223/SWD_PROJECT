@@ -20,6 +20,19 @@ namespace SWD.BLL.Services
             return await _sensorRepo.GetAllSensorsWithDetailsAsync();
         }
 
+        public async Task<(List<Sensor> Sensors, int TotalCount)> GetAllSensorsAsync(int? hubId, int? typeId, string? search, string? status, int? siteId, int? pageNumber, int? pageSize)
+        {
+            var sensors = await _sensorRepo.GetAllSensorsAsync(hubId, typeId, search, status, siteId);
+            var totalCount = sensors.Count;
+
+            if (pageNumber.HasValue && pageSize.HasValue)
+            {
+                sensors = sensors.Skip((pageNumber.Value - 1) * pageSize.Value).Take(pageSize.Value).ToList();
+            }
+
+            return (sensors, totalCount);
+        }
+
         public async Task<Sensor?> GetSensorByIdAsync(int sensorId)
         {
             return await _sensorRepo.GetSensorByIdAsync(sensorId);

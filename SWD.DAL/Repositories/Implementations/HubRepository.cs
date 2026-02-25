@@ -38,14 +38,32 @@ namespace SWD.DAL.Repositories.Implementations
                 .ToListAsync();
             return hubs;
         }
-        public async Task<List<Hub>> GetHubsBySiteIdAsync(int siteId)
+        public async Task<List<Hub>> GetAllHubsAsync(string? search, bool? isOnline, int? siteId)
         {
-            var hubs = await _context.Hubs
-                .Where(h => h.SiteId == siteId)
+            var query = _context.Hubs
                 .Include(s => s.Sensors)
                 .Include(s => s.Site)
-                .ToListAsync();
-            return hubs;
+                .AsQueryable();
+
+            if (siteId.HasValue)
+            {
+                query = query.Where(h => h.SiteId == siteId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var searchLower = search.Trim().ToLower();
+                query = query.Where(h =>
+                    (h.Name != null && h.Name.ToLower().Contains(searchLower)) ||
+                    h.MacAddress.ToLower().Contains(searchLower));
+            }
+
+            if (isOnline.HasValue)
+            {
+                query = query.Where(h => h.IsOnline == isOnline.Value);
+            }
+
+            return await query.ToListAsync();
         }
         public async Task AddHubAsync(Hub hub)
         {

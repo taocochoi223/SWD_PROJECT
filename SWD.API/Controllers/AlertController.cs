@@ -23,13 +23,32 @@ namespace SWD.API.Controllers
         /// <summary>
         /// Get Alert Rules - For configuration
         /// </summary>
+        /// <param name="search">Tìm kiếm theo tên quy tắc hoặc tên cảm biến</param>
+        /// <param name="isActive">Lọc theo trạng thái active/inactive</param>
+        /// <param name="priority">Lọc theo mức độ ưu tiên (High, Medium, Low...)</param>
+        /// <param name="pageNumber">Số trang (bắt đầu từ 1). Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
+        /// <param name="pageSize">Số lượng mỗi trang. Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
         [HttpGet("rules")]
         [Authorize(Roles = "Admin,ADMIN,Manager,MANAGER")]
-        public async Task<IActionResult> GetAllRulesAsync()
+        public async Task<IActionResult> GetAllRulesAsync(
+            [FromQuery] string? search = null,
+            [FromQuery] bool? isActive = null,
+            [FromQuery] string? priority = null,
+            [FromQuery] int? pageNumber = null,
+            [FromQuery] int? pageSize = null)
         {
             try
             {
-                var rules = await _alertService.GetAllRulesAsync();
+                if (pageNumber.HasValue && pageNumber.Value < 1)
+                    return BadRequest(new { message = "pageNumber phải lớn hơn hoặc bằng 1" });
+                if (pageSize.HasValue && pageSize.Value < 1)
+                    return BadRequest(new { message = "pageSize phải lớn hơn hoặc bằng 1" });
+
+                var (rules, totalCount) = await _alertService.GetAllRulesAsync(search, isActive, priority, pageNumber, pageSize);
+
+                int? totalPages = (pageNumber.HasValue && pageSize.HasValue)
+                    ? (int)Math.Ceiling((double)totalCount / pageSize.Value)
+                    : null;
 
                 var ruleDtos = rules.Select(r => new AlertRuleDto
                 {
@@ -52,7 +71,10 @@ namespace SWD.API.Controllers
                 return Ok(new
                 {
                     message = "Lấy danh sách quy tắc cảnh báo thành công",
-                    count = ruleDtos.Count,
+                    totalCount,
+                    pageNumber,
+                    pageSize,
+                    totalPages,
                     data = ruleDtos
                 });
             }

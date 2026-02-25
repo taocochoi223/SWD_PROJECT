@@ -20,22 +20,33 @@ namespace SWD.API.Controllers
         /// <summary>
         /// Get all hubs
         /// </summary>
+        /// <param name="search">Tìm kiếm theo tên hoặc địa chỉ MAC</param>
+        /// <param name="isOnline">Lọc theo trạng thái online/offline</param>
+        /// <param name="pageNumber">Số trang (bắt đầu từ 1). Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
+        /// <param name="pageSize">Số lượng mỗi trang. Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
         [HttpGet]
 
-        public async Task<IActionResult> GetAllHubsAsync()
+        public async Task<IActionResult> GetAllHubsAsync(
+            [FromQuery] string? search = null,
+            [FromQuery] bool? isOnline = null,
+            [FromQuery] int? pageNumber = null,
+            [FromQuery] int? pageSize = null)
         {
             try
             {
+                if (pageNumber.HasValue && pageNumber.Value < 1)
+                    return BadRequest(new { message = "pageNumber phải lớn hơn hoặc bằng 1" });
+                if (pageSize.HasValue && pageSize.Value < 1)
+                    return BadRequest(new { message = "pageSize phải lớn hơn hoặc bằng 1" });
+
                 var siteIdClaim = User.FindFirst("SiteId")?.Value;
                 int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
 
-                var hubs = await _hubService.GetAllHubsAsync();
+                var (hubs, totalCount) = await _hubService.GetAllHubsAsync(search, isOnline, userSiteId, pageNumber, pageSize);
 
-                // Filter theo Site của user
-                if (userSiteId.HasValue)
-                {
-                    hubs = hubs.Where(h => h.SiteId == userSiteId.Value).ToList();
-                }
+                int? totalPages = (pageNumber.HasValue && pageSize.HasValue)
+                    ? (int)Math.Ceiling((double)totalCount / pageSize.Value)
+                    : null;
 
                 var hubDtos = hubs.Select(h => new HubDto
                 {
@@ -52,8 +63,10 @@ namespace SWD.API.Controllers
                 return Ok(new
                 {
                     message = "Lấy danh sách Hub thành công",
-                    count = hubDtos.Count,
-                    userSiteId = userSiteId, 
+                    totalCount,
+                    pageNumber,
+                    pageSize,
+                    totalPages,
                     data = hubDtos
                 });
             }

@@ -21,34 +21,36 @@ namespace SWD.API.Controllers
         /// <summary>
         /// Get All Sensors - With optional filters
         /// </summary>
+        /// <param name="hub_id">Lọc theo Hub ID</param>
+        /// <param name="type">Lọc theo loại cảm biến (TypeId)</param>
+        /// <param name="search">Tìm kiếm theo tên cảm biến</param>
+        /// <param name="status">Lọc theo trạng thái (Active, Inactive...)</param>
+        /// <param name="pageNumber">Số trang (bắt đầu từ 1). Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
+        /// <param name="pageSize">Số lượng mỗi trang. Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
         [HttpGet]
         public async Task<IActionResult> GetAllSensorsAsync(
             [FromQuery] int? hub_id = null,
-            [FromQuery] int? type = null)
+            [FromQuery] int? type = null,
+            [FromQuery] string? search = null,
+            [FromQuery] string? status = null,
+            [FromQuery] int? pageNumber = null,
+            [FromQuery] int? pageSize = null)
         {
             try
             {
+                if (pageNumber.HasValue && pageNumber.Value < 1)
+                    return BadRequest(new { message = "pageNumber phải lớn hơn hoặc bằng 1" });
+                if (pageSize.HasValue && pageSize.Value < 1)
+                    return BadRequest(new { message = "pageSize phải lớn hơn hoặc bằng 1" });
+
                 var siteIdClaim = User.FindFirst("SiteId")?.Value;  
                 int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
 
-                List<Sensor> sensors;
+                var (sensors, totalCount) = await _sensorService.GetAllSensorsAsync(hub_id, type, search, status, userSiteId, pageNumber, pageSize);
 
-                if (hub_id.HasValue)
-                {
-                    sensors = await _sensorService.GetSensorsByHubIdAsync(hub_id.Value);
-                }
-                else if (type.HasValue)
-                {
-                    sensors = await _sensorService.GetSensorsByTypeIdAsync(type.Value);
-                }
-                else
-                {
-                    sensors = await _sensorService.GetAllSensorsAsync();
-                }
-                if(userSiteId.HasValue)
-                {
-                    sensors = sensors.Where(s => s.Hub != null && s.Hub.SiteId == userSiteId.Value).ToList();
-                }
+                int? totalPages = (pageNumber.HasValue && pageSize.HasValue)
+                    ? (int)Math.Ceiling((double)totalCount / pageSize.Value)
+                    : null;
 
                 var sensorDtos = sensors.Select(s => new SensorDto
                 {
@@ -65,8 +67,10 @@ namespace SWD.API.Controllers
                 return Ok(new
                 {
                     message = "Lấy danh sách cảm biến thành công",
-                    count = sensorDtos.Count,
-                    userSiteId = userSiteId, 
+                    totalCount,
+                    pageNumber,
+                    pageSize,
+                    totalPages,
                     data = sensorDtos
                 });
             }

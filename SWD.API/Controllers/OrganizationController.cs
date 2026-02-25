@@ -23,13 +23,29 @@ namespace SWD.API.Controllers
         /// <summary>
         /// Get all organizations
         /// </summary>
+        /// <param name="search">Tìm kiếm theo tên hoặc mô tả</param>
+        /// <param name="pageNumber">Số trang (bắt đầu từ 1). Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
+        /// <param name="pageSize">Số lượng mỗi trang. Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
         [HttpGet]
         [Authorize(Roles = "Admin,ADMIN")]
-        public async Task<IActionResult> GetAllOrganizationsAsync()
+        public async Task<IActionResult> GetAllOrganizationsAsync(
+            [FromQuery] string? search = null,
+            [FromQuery] int? pageNumber = null,
+            [FromQuery] int? pageSize = null)
         {
             try
             {
-                var orgs = await _organizationService.GetAllOrganizationsAsync();
+                if (pageNumber.HasValue && pageNumber.Value < 1)
+                    return BadRequest(new { message = "pageNumber phải lớn hơn hoặc bằng 1" });
+                if (pageSize.HasValue && pageSize.Value < 1)
+                    return BadRequest(new { message = "pageSize phải lớn hơn hoặc bằng 1" });
+
+                var (orgs, totalCount) = await _organizationService.GetAllOrganizationsAsync(search, pageNumber, pageSize);
+
+                int? totalPages = (pageNumber.HasValue && pageSize.HasValue)
+                    ? (int)Math.Ceiling((double)totalCount / pageSize.Value)
+                    : null;
+
                 var orgDtos = orgs.Select(o => new OrganizationDto
                 {
                     OrgId = o.OrgId,
@@ -42,7 +58,10 @@ namespace SWD.API.Controllers
                 return Ok(new
                 {
                     message = "Lấy danh sách tổ chức thành công",
-                    count = orgDtos.Count,
+                    totalCount,
+                    pageNumber,
+                    pageSize,
+                    totalPages,
                     data = orgDtos
                 });
             }
