@@ -62,6 +62,43 @@ namespace SWD.DAL.Repositories.Implementations
                 .ToListAsync();
         }
 
+        public async Task<List<Sensor>> GetAllSensorsAsync(int? hubId, int? typeId, string? search, string? status, int? siteId)
+        {
+            var query = _context.Sensors
+                .Include(s => s.Hub)
+                .Include(s => s.Type)
+                .AsQueryable();
+
+            if (siteId.HasValue)
+            {
+                query = query.Where(s => s.Hub != null && s.Hub.SiteId == siteId.Value);
+            }
+
+            if (hubId.HasValue)
+            {
+                query = query.Where(s => s.HubId == hubId.Value);
+            }
+
+            if (typeId.HasValue)
+            {
+                query = query.Where(s => s.TypeId == typeId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var searchLower = search.Trim().ToLower();
+                query = query.Where(s => s.Name != null && s.Name.ToLower().Contains(searchLower));
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                var statusTrimmed = status.Trim().ToLower();
+                query = query.Where(s => s.Status != null && s.Status.ToLower() == statusTrimmed);
+            }
+
+            return await query.OrderBy(s => s.HubId).ToListAsync();
+        }
+
         public async Task AddReadingAsync(SensorData sensorData)
         {
             await _context.SensorDatas.AddAsync(sensorData);

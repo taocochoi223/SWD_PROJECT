@@ -8,6 +8,7 @@ namespace SWD.BLL.Interfaces
     public interface ISiteService
     {
         Task<List<Site>> GetAllSitesAsync();
+        Task<(List<Site> Sites, int TotalCount)> GetAllSitesAsync(string? search, int? orgId, int? pageNumber, int? pageSize);
         Task<Site?> GetSiteByIdAsync(int siteId);
         Task CreateSiteAsync(Site site);
         Task UpdateSiteAsync(Site site);

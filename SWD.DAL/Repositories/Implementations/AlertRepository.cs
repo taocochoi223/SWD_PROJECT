@@ -29,6 +29,36 @@ namespace SWD.DAL.Repositories.Implementations
                 .ToListAsync();
         }
 
+        public async Task<List<AlertRule>> GetAllRulesAsync(string? search, bool? isActive, string? priority)
+        {
+            var query = _context.AlertRules
+                .Include(r => r.Sensor)
+                .ThenInclude(s => s.Hub)
+                .ThenInclude(h => h.Site)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var searchLower = search.Trim().ToLower();
+                query = query.Where(r =>
+                    (r.Name != null && r.Name.ToLower().Contains(searchLower)) ||
+                    (r.Sensor != null && r.Sensor.Name != null && r.Sensor.Name.ToLower().Contains(searchLower)));
+            }
+
+            if (isActive.HasValue)
+            {
+                query = query.Where(r => r.IsActive == isActive.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(priority))
+            {
+                var priorityLower = priority.Trim().ToLower();
+                query = query.Where(r => r.Priority != null && r.Priority.ToLower() == priorityLower);
+            }
+
+            return await query.ToListAsync();
+        }
+
         public async Task CreateRuleAsync(AlertRule rule)
         {
             await _context.AlertRules.AddAsync(rule);

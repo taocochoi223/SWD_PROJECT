@@ -34,6 +34,19 @@ namespace SWD.BLL.Services
             return await _userRepo.GetAllUsersAsync();
         }
 
+        public async Task<(List<User> Users, int TotalCount)> GetAllUsersAsync(string? search, bool? isActive, int? pageNumber, int? pageSize)
+        {
+            var users = await _userRepo.GetAllUsersAsync(search, isActive);
+            var totalCount = users.Count;
+
+            if (pageNumber.HasValue && pageSize.HasValue)
+            {
+                users = users.Skip((pageNumber.Value - 1) * pageSize.Value).Take(pageSize.Value).ToList();
+            }
+
+            return (users, totalCount);
+        }
+
         public async Task<User?> GetUserByIdAsync(int userId)
         {
             return await _userRepo.GetUserByIdAsync(userId);

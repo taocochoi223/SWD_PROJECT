@@ -20,6 +20,19 @@ namespace SWD.BLL.Services
             return await _repository.GetAllAsync();
         }
 
+        public async Task<(List<Organization> Orgs, int TotalCount)> GetAllOrganizationsAsync(string? search, int? pageNumber, int? pageSize)
+        {
+            var orgs = (await _repository.GetAllAsync(search)).ToList();
+            var totalCount = orgs.Count;
+
+            if (pageNumber.HasValue && pageSize.HasValue)
+            {
+                orgs = orgs.Skip((pageNumber.Value - 1) * pageSize.Value).Take(pageSize.Value).ToList();
+            }
+
+            return (orgs, totalCount);
+        }
+
         public async Task<Organization?> GetOrganizationByIdAsync(int id)
         {
             return await _repository.GetByIdAsync(id);

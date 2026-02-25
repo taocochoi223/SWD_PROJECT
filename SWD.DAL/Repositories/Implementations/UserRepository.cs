@@ -43,6 +43,30 @@ namespace SWD.DAL.Repositories.Implementations
                 .ToListAsync();
         }
 
+        public async Task<List<User>> GetAllUsersAsync(string? search, bool? isActive)
+        {
+            var query = _context.Users
+                .Include(u => u.Site)
+                .Include(u => u.Role)
+                .Include(u => u.Org)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var searchLower = search.Trim().ToLower();
+                query = query.Where(u =>
+                    (u.FullName != null && u.FullName.ToLower().Contains(searchLower)) ||
+                    (u.Email != null && u.Email.ToLower().Contains(searchLower)));
+            }
+
+            if (isActive.HasValue)
+            {
+                query = query.Where(u => u.IsActive == isActive.Value);
+            }
+
+            return await query.ToListAsync();
+        }
+
         public async Task AddUserAsync(User user)
         {
             await _context.Users.AddAsync(user);

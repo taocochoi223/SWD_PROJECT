@@ -22,6 +22,23 @@ namespace SWD.DAL.Repositories.Implementations
                 .ToListAsync();
         }
 
+        public async Task<IEnumerable<Organization>> GetAllAsync(string? search)
+        {
+            var query = _context.Organizations
+                .Include(o => o.Sites)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var searchLower = search.Trim().ToLower();
+                query = query.Where(o =>
+                    (o.Name != null && o.Name.ToLower().Contains(searchLower)) ||
+                    (o.Description != null && o.Description.ToLower().Contains(searchLower)));
+            }
+
+            return await query.ToListAsync();
+        }
+
         public async Task<Organization?> GetByIdAsync(int id)
         {
             return await _context.Organizations
