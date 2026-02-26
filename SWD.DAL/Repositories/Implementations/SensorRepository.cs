@@ -4,10 +4,7 @@ using SWD.DAL.Repositories.Interfaces;
 
 namespace SWD.DAL.Repositories.Implementations
 {
-    /// <summary>
-    /// Repository quản lý Sensor, Reading, AlertRule và AlertHistory
-    /// (Core 80% workload của hệ thống IoT)
-    /// </summary>
+
     public class SensorRepository : ISensorRepository
     {
         private readonly IoTFinalDbContext _context;
@@ -23,23 +20,6 @@ namespace SWD.DAL.Repositories.Implementations
                 .Include(s => s.Hub)
                 .FirstOrDefaultAsync(s => s.SensorId == sensorId);
         }
-        public async Task<List<Sensor>> GetSensorsByHubIdAsync(int hubId)
-        {
-            return await _context.Sensors
-                .Include(h => h.Hub)
-                .Include(t => t.Type)
-                .Where(s => s.HubId == hubId)
-                .ToListAsync();
-        }
-
-        public async Task<List<Sensor>> GetSensorsByTypeIdAsync(int typeId)
-        {
-            return await _context.Sensors
-                .Include(s => s.Hub)
-                .Include(s => s.Type)
-                .Where(s => s.TypeId == typeId)
-                .ToListAsync();
-        }
         public Task UpdateSensorAsync(Sensor sensor)
         {
             _context.Sensors.Update(sensor);
@@ -51,18 +31,9 @@ namespace SWD.DAL.Repositories.Implementations
             await _context.Sensors.AddAsync(sensor);
         }
 
-        public async Task<List<Sensor>> GetAllSensorsWithDetailsAsync()
-        {
 
-            
-            return await _context.Sensors
-                .Include(s => s.Hub)
-                .Include(s => s.Type)
-                .OrderBy(s => s.HubId)
-                .ToListAsync();
-        }
 
-        public async Task<List<Sensor>> GetAllSensorsAsync(int? hubId, int? typeId, string? search, string? status, int? siteId)
+        public async Task<List<Sensor>> GetAllSensorsAsync(int? hubId = null, int? typeId = null, string? search = null, string? status = null, int? siteId = null)
         {
             var query = _context.Sensors
                 .Include(s => s.Hub)

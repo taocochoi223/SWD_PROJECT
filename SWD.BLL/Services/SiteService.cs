@@ -13,12 +13,7 @@ namespace SWD.BLL.Services
             _siteRepo = siteRepo;
         }
 
-        public async Task<List<Site>> GetAllSitesAsync()
-        {
-            return await _siteRepo.GetAllSitesAsync();
-        }
-
-        public async Task<(List<Site> Sites, int TotalCount)> GetAllSitesAsync(string? search, int? orgId, int? pageNumber, int? pageSize)
+        public async Task<(List<Site> Sites, int TotalCount)> GetAllSitesAsync(string? search = null, int? orgId = null, int? pageNumber = null, int? pageSize = null)
         {
             var sites = await _siteRepo.GetAllSitesAsync(search, orgId);
             var totalCount = sites.Count;

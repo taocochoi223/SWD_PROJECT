@@ -39,9 +39,9 @@ namespace SWD.API.Controllers
         {
             try
             {
-                var sites = await _siteService.GetAllSitesAsync();
-                var hubs = await _hubService.GetAllHubsAsync();
-                var sensors = await _sensorService.GetAllSensorsAsync();
+                var (sites, _) = await _siteService.GetAllSitesAsync();
+                var (hubs, _) = await _hubService.GetAllHubsAsync();
+                var (sensors, _) = await _sensorService.GetAllSensorsAsync();
                 var alerts = new List<object>(); // Placeholder as AlertHistory is removed
                 // var alerts = await _alertService.GetAlertsWithFiltersAsync("Active", null);
 

@@ -60,7 +60,7 @@ namespace SWD.API.Services
             var hubService = scope.ServiceProvider.GetRequiredService<IHubService>();
             var sensorService = scope.ServiceProvider.GetRequiredService<ISensorService>();
 
-            var allHubs = await hubService.GetAllHubsAsync();
+            var (allHubs, _) = await hubService.GetAllHubsAsync();
             var onlineHubs = allHubs.Where(h => h.IsOnline == true).ToList();
 
             if (!onlineHubs.Any()) return;
