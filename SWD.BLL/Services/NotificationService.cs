@@ -39,9 +39,9 @@ namespace SWD.BLL.Services
             return await _repo.GetNotificationsByUserIdAsync(userId);
         }
 
-        public async Task MarkAsReadAsync(long notificationId)
+        public async Task MarkAsReadAsync(long notificationId, int? userId = null)
         {
-            await _repo.MarkAsReadAsync(notificationId);
+            await _repo.MarkAsReadAsync(notificationId, userId);
         }
 
         public async Task<(List<Notification> Items, int TotalCount)> GetNotificationsHistoryAsync(

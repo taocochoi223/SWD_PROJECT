@@ -86,9 +86,9 @@ namespace SWD.BLL.Services
             return await _alertRepo.GetAllRulesAsync();
         }
 
-        public async Task<(List<AlertRule> Rules, int TotalCount)> GetAllRulesAsync(string? search, bool? isActive, string? priority, int? pageNumber, int? pageSize)
+        public async Task<(List<AlertRule> Rules, int TotalCount)> GetAllRulesAsync(string? search, bool? isActive, string? priority, int? siteId, int? pageNumber, int? pageSize)
         {
-            var rules = await _alertRepo.GetAllRulesAsync(search, isActive, priority);
+            var rules = await _alertRepo.GetAllRulesAsync(search, isActive, priority, siteId);
             var totalCount = rules.Count;
 
             if (pageNumber.HasValue && pageSize.HasValue)
