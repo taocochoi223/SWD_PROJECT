@@ -4,10 +4,7 @@ using SWD.DAL.Repositories.Interfaces;
 
 namespace SWD.DAL.Repositories.Implementations
 {
-    /// <summary>
-    /// Repository quản lý Sensor, Reading, AlertRule và AlertHistory
-    /// (Core 80% workload của hệ thống IoT)
-    /// </summary>
+
     public class SensorRepository : ISensorRepository
     {
         private readonly IoTFinalDbContext _context;
@@ -23,23 +20,6 @@ namespace SWD.DAL.Repositories.Implementations
                 .Include(s => s.Hub)
                 .FirstOrDefaultAsync(s => s.SensorId == sensorId);
         }
-        public async Task<List<Sensor>> GetSensorsByHubIdAsync(int hubId)
-        {
-            return await _context.Sensors
-                .Include(h => h.Hub)
-                .Include(t => t.Type)
-                .Where(s => s.HubId == hubId)
-                .ToListAsync();
-        }
-
-        public async Task<List<Sensor>> GetSensorsByTypeIdAsync(int typeId)
-        {
-            return await _context.Sensors
-                .Include(s => s.Hub)
-                .Include(s => s.Type)
-                .Where(s => s.TypeId == typeId)
-                .ToListAsync();
-        }
         public Task UpdateSensorAsync(Sensor sensor)
         {
             _context.Sensors.Update(sensor);
@@ -51,15 +31,43 @@ namespace SWD.DAL.Repositories.Implementations
             await _context.Sensors.AddAsync(sensor);
         }
 
-        public async Task<List<Sensor>> GetAllSensorsWithDetailsAsync()
-        {
 
-            
-            return await _context.Sensors
+
+        public async Task<List<Sensor>> GetAllSensorsAsync(int? hubId = null, int? typeId = null, string? search = null, string? status = null, int? siteId = null)
+        {
+            var query = _context.Sensors
                 .Include(s => s.Hub)
                 .Include(s => s.Type)
-                .OrderBy(s => s.HubId)
-                .ToListAsync();
+                .AsQueryable();
+
+            if (siteId.HasValue)
+            {
+                query = query.Where(s => s.Hub != null && s.Hub.SiteId == siteId.Value);
+            }
+
+            if (hubId.HasValue)
+            {
+                query = query.Where(s => s.HubId == hubId.Value);
+            }
+
+            if (typeId.HasValue)
+            {
+                query = query.Where(s => s.TypeId == typeId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var searchLower = search.Trim().ToLower();
+                query = query.Where(s => s.Name != null && s.Name.ToLower().Contains(searchLower));
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                var statusTrimmed = status.Trim().ToLower();
+                query = query.Where(s => s.Status != null && s.Status.ToLower() == statusTrimmed);
+            }
+
+            return await query.OrderBy(s => s.HubId).ToListAsync();
         }
 
         public async Task AddReadingAsync(SensorData sensorData)

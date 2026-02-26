@@ -138,13 +138,30 @@ namespace SWD.API.Controllers
         /// <summary>
         /// Get All Users
         /// </summary>
+        /// <param name="search">Tìm kiếm theo tên hoặc email</param>
+        /// <param name="isActive">Lọc theo trạng thái active/inactive</param>
+        /// <param name="pageNumber">Số trang (bắt đầu từ 1). Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
+        /// <param name="pageSize">Số lượng mỗi trang. Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
         [HttpGet]
         [Authorize(Roles = "Admin,ADMIN")]
-        public async Task<IActionResult> GetAllUsersAsync()
+        public async Task<IActionResult> GetAllUsersAsync(
+            [FromQuery] string? search = null,
+            [FromQuery] bool? isActive = null,
+            [FromQuery] int? pageNumber = null,
+            [FromQuery] int? pageSize = null)
         {
             try
             {
-                var users = await _userService.GetAllUsersAsync();
+                if (pageNumber.HasValue && pageNumber.Value < 1)
+                    return BadRequest(new { message = "pageNumber phải lớn hơn hoặc bằng 1" });
+                if (pageSize.HasValue && pageSize.Value < 1)
+                    return BadRequest(new { message = "pageSize phải lớn hơn hoặc bằng 1" });
+
+                var (users, totalCount) = await _userService.GetAllUsersAsync(search, isActive, pageNumber, pageSize);
+
+                int? totalPages = (pageNumber.HasValue && pageSize.HasValue)
+                    ? (int)Math.Ceiling((double)totalCount / pageSize.Value)
+                    : null;
 
                 var userDtos = users.Select(user => new
                 {
@@ -162,7 +179,10 @@ namespace SWD.API.Controllers
                 return Ok(new
                 {
                     message = "Lấy danh sách người dùng thành công",
-                    count = userDtos.Count,
+                    totalCount,
+                    pageNumber,
+                    pageSize,
+                    totalPages,
                     data = userDtos
                 });
             }

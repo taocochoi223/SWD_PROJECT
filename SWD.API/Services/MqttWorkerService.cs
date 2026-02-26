@@ -221,7 +221,7 @@ namespace SWD.API.Services
                     vietnamNow = DateTime.UtcNow.AddHours(7);
                 }
 
-                var allHubs = await hubService.GetAllHubsAsync();
+                var (allHubs, _) = await hubService.GetAllHubsAsync();
 
                 if (isOnline)
                 {

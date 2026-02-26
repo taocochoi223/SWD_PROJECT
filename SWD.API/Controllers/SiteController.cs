@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SWD.API.Dtos;
 using SWD.BLL.Interfaces;
 using SWD.DAL.Models;
+using System.Linq;
 
 namespace SWD.API.Controllers
 {
@@ -22,19 +22,29 @@ namespace SWD.API.Controllers
         /// <summary>
         /// Get All Sites
         /// </summary>
+        /// <param name="search">Tìm kiếm theo tên hoặc ID</param>
+        /// <param name="orgId">Lọc theo tổ chức (OrgId)</param>
+        /// <param name="pageNumber">Số trang (bắt đầu từ 1). Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
+        /// <param name="pageSize">Số lượng mỗi trang. Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
         [HttpGet]
-        public async Task<IActionResult> GetAllSitesAsync([FromQuery] string? search = null)
+        public async Task<IActionResult> GetAllSitesAsync(
+            [FromQuery] string? search = null,
+            [FromQuery] int? orgId = null,
+            [FromQuery] int? pageNumber = null,
+            [FromQuery] int? pageSize = null)
         {
             try
             {
-                var sites = await _siteService.GetAllSitesAsync();
-                if (!string.IsNullOrWhiteSpace(search))
-                {
-                    sites = sites.Where(s =>
-                        s.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                        s.SiteId.ToString().Contains(search)
-                    ).ToList();
-                }
+                if (pageNumber.HasValue && pageNumber.Value < 1)
+                    return BadRequest(new { message = "pageNumber phải lớn hơn hoặc bằng 1" });
+                if (pageSize.HasValue && pageSize.Value < 1)
+                    return BadRequest(new { message = "pageSize phải lớn hơn hoặc bằng 1" });
+
+                var (sites, totalCount) = await _siteService.GetAllSitesAsync(search, orgId, pageNumber, pageSize);
+
+                int? totalPages = (pageNumber.HasValue && pageSize.HasValue)
+                    ? (int)Math.Ceiling((double)totalCount / pageSize.Value)
+                    : null;
 
                 var siteDtos = sites.Select(s => new SiteDto
                 {
@@ -50,7 +60,10 @@ namespace SWD.API.Controllers
                 return Ok(new
                 {
                     message = "Lấy danh sách địa điểm thành công",
-                    count = siteDtos.Count,
+                    totalCount,
+                    pageNumber,
+                    pageSize,
+                    totalPages,
                     data = siteDtos
                 });
             }

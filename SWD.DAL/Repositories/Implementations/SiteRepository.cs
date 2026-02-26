@@ -16,12 +16,29 @@ namespace SWD.DAL.Repositories.Implementations
             _context = context;
         }
 
-        public async Task<List<Site>> GetAllSitesAsync()
+
+
+        public async Task<List<Site>> GetAllSitesAsync(string? search = null, int? orgId = null)
         {
-            return await _context.Sites
+            var query = _context.Sites
                 .Include(s => s.Org)
                 .Include(s => s.Hubs)
-                .ToListAsync();
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var searchLower = search.Trim().ToLower();
+                query = query.Where(s =>
+                    s.Name.ToLower().Contains(searchLower) ||
+                    s.SiteId.ToString().Contains(searchLower));
+            }
+
+            if (orgId.HasValue)
+            {
+                query = query.Where(s => s.OrgId == orgId.Value);
+            }
+
+            return await query.ToListAsync();
         }
 
         public async Task<Site?> GetSiteByIdAsync(int siteId)

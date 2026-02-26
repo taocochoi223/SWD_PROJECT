@@ -15,9 +15,17 @@ namespace SWD.BLL.Services
             _alertService = alertService;
         }
 
-        public async Task<List<Sensor>> GetAllSensorsAsync()
+        public async Task<(List<Sensor> Sensors, int TotalCount)> GetAllSensorsAsync(int? hubId = null, int? typeId = null, string? search = null, string? status = null, int? siteId = null, int? pageNumber = null, int? pageSize = null)
         {
-            return await _sensorRepo.GetAllSensorsWithDetailsAsync();
+            var sensors = await _sensorRepo.GetAllSensorsAsync(hubId, typeId, search, status, siteId);
+            var totalCount = sensors.Count;
+
+            if (pageNumber.HasValue && pageSize.HasValue)
+            {
+                sensors = sensors.Skip((pageNumber.Value - 1) * pageSize.Value).Take(pageSize.Value).ToList();
+            }
+
+            return (sensors, totalCount);
         }
 
         public async Task<Sensor?> GetSensorByIdAsync(int sensorId)
@@ -26,11 +34,11 @@ namespace SWD.BLL.Services
         }
         public async Task<List<Sensor>> GetSensorsByHubIdAsync(int hubId)
         {
-            return await _sensorRepo.GetSensorsByHubIdAsync(hubId);
+            return await _sensorRepo.GetAllSensorsAsync(hubId: hubId);
         }
         public async Task<List<Sensor>> GetSensorsByTypeIdAsync(int typeId)
         {
-            return await _sensorRepo.GetSensorsByTypeIdAsync(typeId);
+            return await _sensorRepo.GetAllSensorsAsync(typeId: typeId);
         }
         public async Task RegisterSensorAsync(Sensor sensor)
         {

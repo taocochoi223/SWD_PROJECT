@@ -9,6 +9,7 @@ namespace SWD.BLL.Interfaces
     {
         Task<User?> AuthenticateUserAsync(string email, string password);
         Task<List<User>> GetAllUsersAsync();
+        Task<(List<User> Users, int TotalCount)> GetAllUsersAsync(string? search, bool? isActive, int? pageNumber, int? pageSize);
         Task<User?> GetUserByIdAsync(int userId);
         Task<User?> GetUserByEmailAsync(string email);
         Task RegisterUserAsync(User user);
