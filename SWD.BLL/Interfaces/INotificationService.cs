@@ -12,6 +12,15 @@ namespace SWD.BLL.Interfaces
         Task<Notification> CreateNotificationAsync(int userId, int ruleId, string message);
         Task<List<Notification>> GetUserNotificationsAsync(int userId);
         Task MarkAsReadAsync(long notificationId);
+        Task<(List<Notification> Items, int TotalCount)> GetNotificationsHistoryAsync(
+            int? userId = null,
+            int? siteId = null,
+            int? sensorId = null,
+            string? severity = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int pageNumber = 1,
+            int pageSize = 20);
     }
 
 }

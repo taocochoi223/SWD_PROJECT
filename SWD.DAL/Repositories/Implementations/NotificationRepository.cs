@@ -56,6 +56,58 @@ namespace SWD.DAL.Repositories.Implementations
                 .ToListAsync();
         }
 
+        public async Task<(List<Notification> Items, int TotalCount)> GetNotificationsHistoryAsync(
+            int? userId = null,
+            int? siteId = null,
+            int? sensorId = null,
+            string? severity = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int pageNumber = 1,
+            int pageSize = 20)
+        {
+            var query = _context.Notifications
+                .Include(n => n.Rule)
+                    .ThenInclude(r => r.Sensor)
+                        .ThenInclude(s => s.Hub)
+                            .ThenInclude(h => h.Site)
+                .Include(n => n.Rule)
+                    .ThenInclude(r => r.Sensor)
+                        .ThenInclude(s => s.Type)
+                .AsQueryable();
+
+            // Filters
+            if (userId.HasValue)
+                query = query.Where(n => n.UserId == userId.Value);
+
+            if (siteId.HasValue)
+                query = query.Where(n => n.Rule.Sensor.Hub.SiteId == siteId.Value);
+
+            if (sensorId.HasValue)
+                query = query.Where(n => n.Rule.SensorId == sensorId.Value);
+
+            if (!string.IsNullOrEmpty(severity))
+                query = query.Where(n => n.Rule.Priority == severity);
+
+            if (fromDate.HasValue)
+                query = query.Where(n => n.SentAt >= fromDate.Value);
+
+            if (toDate.HasValue)
+                query = query.Where(n => n.SentAt <= toDate.Value);
+
+            // Total Count
+            int totalCount = await query.CountAsync();
+
+            // Paging
+            var items = await query
+                .OrderByDescending(n => n.SentAt)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (items, totalCount);
+        }
+
         // ================= COMMON =================
         public async Task SaveChangesAsync()
         {

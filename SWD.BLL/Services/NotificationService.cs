@@ -43,6 +43,19 @@ namespace SWD.BLL.Services
         {
             await _repo.MarkAsReadAsync(notificationId);
         }
-    }
 
+        public async Task<(List<Notification> Items, int TotalCount)> GetNotificationsHistoryAsync(
+            int? userId = null,
+            int? siteId = null,
+            int? sensorId = null,
+            string? severity = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int pageNumber = 1,
+            int pageSize = 20)
+        {
+            return await _repo.GetNotificationsHistoryAsync(
+                userId, siteId, sensorId, severity, fromDate, toDate, pageNumber, pageSize);
+        }
+    }
 }
