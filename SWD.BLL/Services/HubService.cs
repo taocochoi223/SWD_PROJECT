@@ -22,12 +22,7 @@ namespace SWD.BLL.Services
         {
             return await _hubRepo.GetHubByIdAsync(hubId);
         }
-        public async Task<List<Hub>> GetAllHubsAsync()
-        {
-            return await _hubRepo.GetAllHubsAsync();
-        }
-
-        public async Task<(List<Hub> Hubs, int TotalCount)> GetAllHubsAsync(string? search, bool? isOnline, int? siteId, int? pageNumber, int? pageSize)
+        public async Task<(List<Hub> Hubs, int TotalCount)> GetAllHubsAsync(string? search = null, bool? isOnline = null, int? siteId = null, int? pageNumber = null, int? pageSize = null)
         {
             var hubs = await _hubRepo.GetAllHubsAsync(search, isOnline, siteId);
             var totalCount = hubs.Count;

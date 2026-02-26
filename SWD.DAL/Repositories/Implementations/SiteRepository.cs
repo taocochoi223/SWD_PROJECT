@@ -16,15 +16,9 @@ namespace SWD.DAL.Repositories.Implementations
             _context = context;
         }
 
-        public async Task<List<Site>> GetAllSitesAsync()
-        {
-            return await _context.Sites
-                .Include(s => s.Org)
-                .Include(s => s.Hubs)
-                .ToListAsync();
-        }
 
-        public async Task<List<Site>> GetAllSitesAsync(string? search, int? orgId)
+
+        public async Task<List<Site>> GetAllSitesAsync(string? search = null, int? orgId = null)
         {
             var query = _context.Sites
                 .Include(s => s.Org)

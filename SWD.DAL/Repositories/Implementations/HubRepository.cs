@@ -30,15 +30,8 @@ namespace SWD.DAL.Repositories.Implementations
                 .Include(h => h.Sensors)
                 .FirstOrDefaultAsync(h => h.HubId == hubId);
         }
-        public async Task<List<Hub>> GetAllHubsAsync()
-        {
-            var hubs = await _context.Hubs
-                .Include(s => s.Sensors)
-                .Include(s => s.Site)
-                .ToListAsync();
-            return hubs;
-        }
-        public async Task<List<Hub>> GetAllHubsAsync(string? search, bool? isOnline, int? siteId)
+
+        public async Task<List<Hub>> GetAllHubsAsync(string? search = null, bool? isOnline = null, int? siteId = null)
         {
             var query = _context.Hubs
                 .Include(s => s.Sensors)
