@@ -29,7 +29,7 @@ namespace SWD.DAL.Repositories.Implementations
                 .ToListAsync();
         }
 
-        public async Task<List<AlertRule>> GetAllRulesAsync(string? search, bool? isActive, string? priority)
+        public async Task<List<AlertRule>> GetAllRulesAsync(string? search, bool? isActive, string? priority, int? siteId = null)
         {
             var query = _context.AlertRules
                 .Include(r => r.Sensor)
@@ -54,6 +54,11 @@ namespace SWD.DAL.Repositories.Implementations
             {
                 var priorityLower = priority.Trim().ToLower();
                 query = query.Where(r => r.Priority != null && r.Priority.ToLower() == priorityLower);
+            }
+
+            if (siteId.HasValue)
+            {
+                query = query.Where(r => r.Sensor.Hub.SiteId == siteId.Value);
             }
 
             return await query.ToListAsync();

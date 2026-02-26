@@ -38,9 +38,13 @@ namespace SWD.DAL.Repositories.Implementations
                 .ToListAsync();
         }
 
-        public async Task MarkAsReadAsync(long notiId)
+        public async Task MarkAsReadAsync(long notiId, int? userId = null)
         {
-            var noti = await _context.Notifications.FindAsync(notiId);
+            var query = _context.Notifications.AsQueryable();
+            if (userId.HasValue)
+                query = query.Where(n => n.UserId == userId.Value);
+
+            var noti = await query.FirstOrDefaultAsync(n => n.NotiId == notiId);
             if (noti != null)
             {
                 noti.IsRead = true;
@@ -50,9 +54,11 @@ namespace SWD.DAL.Repositories.Implementations
 
         public async Task<List<User>> GetUsersBySiteIdAsync(int siteId)
         {
-            // Lấy tất cả Staff của Site đó + Admin tổng (SiteID = null)
+            // Lấy tất cả người dùng thuộc Site đó (Staff/Manager)
+            // CỘNG VỚI tất cả ADMIN (Admin được nhận mọi cảnh báo của mọi Site)
             return await _context.Users
-                .Where(u => u.SiteId == siteId || u.SiteId == null)
+                .Include(u => u.Role)
+                .Where(u => u.SiteId == siteId || u.Role.RoleName == "ADMIN")
                 .ToListAsync();
         }
 

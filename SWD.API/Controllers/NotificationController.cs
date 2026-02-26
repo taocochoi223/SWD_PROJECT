@@ -25,12 +25,21 @@ namespace SWD.API.Controllers
         {
             try
             {
-                // Validate userId
+                // RBAC: Only owner or ADMIN can see specific user's notifications
+                var currentUserIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                                         ?? User.FindFirst("UserId")?.Value;
+                var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value?.ToUpper();
+
+                if (userRole != "ADMIN" && currentUserIdClaim != userId.ToString())
+                {
+                    return Forbid("Bạn không có quyền xem thông báo của người khác");
+                }
+
                 if (userId <= 0)
                     return BadRequest(new { message = "UserId không hợp lệ" });
 
                 var notis = await _notiService.GetUserNotificationsAsync(userId);
-
+                
                 var notiDtos = notis.Select(n => new NotificationDto
                 {
                     Id = n.NotiId,
@@ -54,7 +63,7 @@ namespace SWD.API.Controllers
                 {
                     message = notiDtos.Count > 0 
                         ? "Lấy danh sách thông báo thành công" 
-                        : "Người dùng chưa có thông báo nào",
+                        : "Thông báo trống",
                     userId = userId,
                     count = notiDtos.Count,
                     unreadCount = unreadCount,
@@ -75,7 +84,16 @@ namespace SWD.API.Controllers
         {
             try
             {
-                // Validate userId
+                // RBAC: Only owner or ADMIN can see specific user's unread count
+                var currentUserIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                                         ?? User.FindFirst("UserId")?.Value;
+                var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value?.ToUpper();
+
+                if (userRole != "ADMIN" && currentUserIdClaim != userId.ToString())
+                {
+                    return Forbid();
+                }
+
                 if (userId <= 0)
                     return BadRequest(new { message = "UserId không hợp lệ" });
 
@@ -104,7 +122,18 @@ namespace SWD.API.Controllers
         {
             try
             {
-                await _notiService.MarkAsReadAsync(id);
+                // RBAC: Pass current userId to ensure user only marks their own notification as read
+                var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value?.ToUpper();
+                var currentUserIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                                         ?? User.FindFirst("UserId")?.Value;
+
+                int? currentUserId = null;
+                if (userRole != "ADMIN" && int.TryParse(currentUserIdClaim, out int parsedId))
+                {
+                    currentUserId = parsedId;
+                }
+                
+                await _notiService.MarkAsReadAsync(id, currentUserId);
                 return Ok(new { message = "Đánh dấu thông báo đã đọc thành công", id = id });
             }
             catch (Exception ex)
@@ -134,37 +163,49 @@ namespace SWD.API.Controllers
                 var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
                                   ?? User.FindFirst("UserId")?.Value;
                 var userSiteIdClaim = User.FindFirst("SiteId")?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim))
+                    return Unauthorized(new { message = "Không tìm thấy thông tin định danh người dùng" });
+
+                int currentUserId = int.Parse(userIdClaim);
                 
                 if (userRole == "ADMIN")
                 {
                     // Admin can view everything, use siteId and userId from query if provided
+                    // No overrides needed
                 }
                 else if (userRole == "MANAGER" || userRole == "STAFF")
                 {
                     // Staff/Manager can only see history of their assigned Site
                     if (string.IsNullOrEmpty(userSiteIdClaim) || !int.TryParse(userSiteIdClaim, out int assignedSiteId))
                     {
-                        return Ok(new { message = "Bạn chưa được gán vào khu vực nào", data = new List<NotificationDto>(), totalCount = 0 });
+                        return Ok(new { 
+                            message = "Tài khoản của bạn chưa được gán khu vực quản lý", 
+                            data = new List<NotificationDto>(), 
+                            totalCount = 0 
+                        });
                     }
                     
-                    // Force their assigned site
+                    // Force their assigned site filtering
                     siteId = assignedSiteId;
 
-                    // To avoid seeing duplicate alerts (since one alert creates multiple notifications for all site users),
-                    // we default to showing only notifications sent to the current user.
-                    // If they specifically want to see notifications for another user in THEIR site, they can still pass userId.
-                    if (!userId.HasValue)
+                    // Security: STAFF can ONLY see their own notifications
+                    // MANAGER can see their own by default, or others in their site if they pass userId
+                    // (But since siteId is forced, they can't see other sites)
+                    if (userRole == "STAFF")
                     {
-                        userId = int.Parse(userIdClaim);
+                        userId = currentUserId;
+                    }
+                    else if (!userId.HasValue)
+                    {
+                        userId = currentUserId;
                     }
                 }
                 else 
                 {
-                    // Other roles (e.g. USER) only see their own notifications
-                    if (string.IsNullOrEmpty(userIdClaim))
-                        return Unauthorized(new { message = "Không tìm thấy thông tin định danh người dùng" });
-                    
-                    userId = int.Parse(userIdClaim);
+                    // Other roles: Only see their own notifications
+                    userId = currentUserId;
+                    siteId = null; // Don't allow them to filter by site if they are just regular users
                 }
 
                 var (items, totalCount) = await _notiService.GetNotificationsHistoryAsync(

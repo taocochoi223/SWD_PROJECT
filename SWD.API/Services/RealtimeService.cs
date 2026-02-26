@@ -15,10 +15,9 @@ namespace SWD.API.Services
 
         public async Task SendAlertSignalAsync(int userId, object alertData)
         {
-            // Gửi tín hiệu thông báo mới tới toàn bộ clients hoặc cụ thể user
-            // Ở đây chúng ta gửi kèm thông tin userId để FE có thể lọc nếu cần, 
-            // hoặc dùng Clients.User(userId) nếu đã config Identity.
-            await _hubContext.Clients.All.SendAsync("ReceiveAlertNotification", new {
+            // Chỉ gửi thông báo tới user cụ thể (dựa trên UserId trong JWT - ClaimTypes.NameIdentifier hoặc sub)
+            // Điều này đảm bảo tính bảo mật, Staff Site A không bao giờ nhận được signal của Site B
+            await _hubContext.Clients.User(userId.ToString()).SendAsync("ReceiveAlertNotification", new {
                 userId = userId,
                 alert = alertData,
                 timestamp = DateTime.UtcNow
