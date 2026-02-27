@@ -225,72 +225,56 @@ namespace SWD.API.Services
 
                 if (isOnline)
                 {
-                    // Step 1: Set all hubs ONLINE first (in parallel)
+                    // Step 1: Set all offline hubs → ONLINE first
                     var offlineHubs = allHubs.Where(h => h.IsOnline != true).ToList();
-                    var hubOnlineTasks = offlineHubs.Select(async hub =>
+                    foreach (var hub in offlineHubs)
                     {
-                        using var innerScope = _scopeFactory.CreateScope();
-                        var innerHubService = innerScope.ServiceProvider.GetRequiredService<IHubService>();
-
                         hub.IsOnline = true;
                         hub.LastHandshake = vietnamNow;
-                        await innerHubService.UpdateHubAsync(hub);
+                        await hubService.UpdateHubAsync(hub);
                         await BroadcastHubStatusChange(hub.HubId, true, hub.LastHandshake);
                         _logger.LogInformation($"[StatusMessage] Hub {hub.HubId} ({hub.Name}) → ONLINE");
-                    });
-                    await Task.WhenAll(hubOnlineTasks);
+                    }
 
-                    // Step 2: THEN set all sensors ONLINE (in parallel)
-                    var sensorOnlineTasks = offlineHubs.Select(async hub =>
+                    // Step 2: THEN set all sensors → ONLINE
+                    foreach (var hub in offlineHubs)
                     {
-                        using var innerScope = _scopeFactory.CreateScope();
-                        var innerSensorService = innerScope.ServiceProvider.GetRequiredService<ISensorService>();
-
-                        var sensors = await innerSensorService.GetSensorsByHubIdAsync(hub.HubId);
-                        var tasks = sensors
-                            .Where(s => s.Status != "Online")
-                            .Select(async sensor =>
+                        var sensors = await sensorService.GetSensorsByHubIdAsync(hub.HubId);
+                        foreach (var sensor in sensors)
+                        {
+                            if (sensor.Status != "Online")
                             {
-                                await innerSensorService.UpdateSensorStatusAsync(sensor.SensorId, "Online");
+                                await sensorService.UpdateSensorStatusAsync(sensor.SensorId, "Online");
                                 await BroadcastSensorStatusChange(sensor.SensorId, "Online", hub.HubId);
-                            });
-                        await Task.WhenAll(tasks);
-                    });
-                    await Task.WhenAll(sensorOnlineTasks);
+                            }
+                        }
+                    }
                 }
                 else
                 {
-                    // Step 1: Set all hubs OFFLINE first (in parallel)
+                    // Step 1: Set all online hubs → OFFLINE first
                     var onlineHubs = allHubs.Where(h => h.IsOnline == true).ToList();
-                    var hubOfflineTasks = onlineHubs.Select(async hub =>
+                    foreach (var hub in onlineHubs)
                     {
-                        using var innerScope = _scopeFactory.CreateScope();
-                        var innerHubService = innerScope.ServiceProvider.GetRequiredService<IHubService>();
-
                         hub.IsOnline = false;
-                        await innerHubService.UpdateHubAsync(hub);
+                        await hubService.UpdateHubAsync(hub);
                         await BroadcastHubStatusChange(hub.HubId, false, hub.LastHandshake);
                         _logger.LogInformation($"[StatusMessage] Hub {hub.HubId} ({hub.Name}) → OFFLINE");
-                    });
-                    await Task.WhenAll(hubOfflineTasks);
+                    }
 
-                    // Step 2: THEN set all sensors OFFLINE (in parallel)
-                    var sensorOfflineTasks = onlineHubs.Select(async hub =>
+                    // Step 2: THEN set all sensors → OFFLINE
+                    foreach (var hub in onlineHubs)
                     {
-                        using var innerScope = _scopeFactory.CreateScope();
-                        var innerSensorService = innerScope.ServiceProvider.GetRequiredService<ISensorService>();
-
-                        var sensors = await innerSensorService.GetSensorsByHubIdAsync(hub.HubId);
-                        var tasks = sensors
-                            .Where(s => s.Status != "Offline")
-                            .Select(async sensor =>
+                        var sensors = await sensorService.GetSensorsByHubIdAsync(hub.HubId);
+                        foreach (var sensor in sensors)
+                        {
+                            if (sensor.Status != "Offline")
                             {
-                                await innerSensorService.UpdateSensorStatusAsync(sensor.SensorId, "Offline");
+                                await sensorService.UpdateSensorStatusAsync(sensor.SensorId, "Offline");
                                 await BroadcastSensorStatusChange(sensor.SensorId, "Offline", hub.HubId);
-                            });
-                        await Task.WhenAll(tasks);
-                    });
-                    await Task.WhenAll(sensorOfflineTasks);
+                            }
+                        }
+                    }
                 }
             }
             catch (Exception ex)
