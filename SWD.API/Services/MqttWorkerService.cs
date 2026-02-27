@@ -28,6 +28,9 @@ namespace SWD.API.Services
         // Lock để tránh race condition: status message và data message không được xử lý đồng thời
         private readonly SemaphoreSlim _statusLock = new SemaphoreSlim(1, 1);
 
+        // Cờ đánh dấu gateway đã tắt → bỏ qua data cũ buffered
+        private volatile bool _gatewayOffline = false;
+
         private string Broker => _configuration["MqttSettings:Broker"] ?? "mqtt1.eoh.io";
         private int Port => int.Parse(_configuration["MqttSettings:Port"] ?? "1883");
         private string GatewayToken => _configuration["MqttSettings:GatewayToken"] ?? "";
@@ -154,6 +157,7 @@ namespace SWD.API.Services
 
                 if (isOnline)
                 {
+                    _gatewayOffline = false; // Gateway bật → cho phép xử lý data
                     var hubsToNotify = new List<HubModel>();
                     foreach (var hub in allHubs)
                     {
@@ -180,7 +184,7 @@ namespace SWD.API.Services
                 else
                 {
                     // {"ol":0} = Gateway tắt → offline TẤT CẢ hub ngay lập tức
-                    // Race condition đã được xử lý bởi SemaphoreSlim lock (line 29)
+                    _gatewayOffline = true; // Chặn data cũ buffered
                     var onlineHubs = allHubs.Where(h => h.IsOnline == true).ToList();
                     
                     foreach (var hub in onlineHubs)
@@ -214,6 +218,13 @@ namespace SWD.API.Services
             await _statusLock.WaitAsync();
             try
             {
+                // Nếu gateway đã tắt → bỏ qua data cũ buffered
+                if (_gatewayOffline)
+                {
+                    _logger.LogWarning($"[MQTT] Skipping buffered data (gateway offline) - chipId: {chipId}");
+                    return;
+                }
+
                 using var scope = _scopeFactory.CreateScope();
                 var sensorService = scope.ServiceProvider.GetRequiredService<ISensorService>();
                 var hubService = scope.ServiceProvider.GetRequiredService<IHubService>();
