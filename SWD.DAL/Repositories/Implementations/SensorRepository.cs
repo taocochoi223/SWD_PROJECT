@@ -18,6 +18,8 @@ namespace SWD.DAL.Repositories.Implementations
         {
             return await _context.Sensors
                 .Include(s => s.Hub)
+                    .ThenInclude(h => h.Site)
+                .Include(s => s.Type)
                 .FirstOrDefaultAsync(s => s.SensorId == sensorId);
         }
         public Task UpdateSensorAsync(Sensor sensor)

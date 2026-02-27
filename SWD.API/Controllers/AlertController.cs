@@ -39,12 +39,24 @@ namespace SWD.API.Controllers
         {
             try
             {
+                // Role-based filtering for rules
+                int? siteId = null;
+                var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value?.ToUpper();
+                if (userRole == "MANAGER")
+                {
+                    var userSiteIdClaim = User.FindFirst("SiteId")?.Value;
+                    if (!string.IsNullOrEmpty(userSiteIdClaim) && int.TryParse(userSiteIdClaim, out int assignedSiteId))
+                    {
+                        siteId = assignedSiteId;
+                    }
+                }
+
                 if (pageNumber.HasValue && pageNumber.Value < 1)
                     return BadRequest(new { message = "pageNumber phải lớn hơn hoặc bằng 1" });
                 if (pageSize.HasValue && pageSize.Value < 1)
                     return BadRequest(new { message = "pageSize phải lớn hơn hoặc bằng 1" });
 
-                var (rules, totalCount) = await _alertService.GetAllRulesAsync(search, isActive, priority, pageNumber, pageSize);
+                var (rules, totalCount) = await _alertService.GetAllRulesAsync(search, isActive, priority, siteId, pageNumber, pageSize);
 
                 int? totalPages = (pageNumber.HasValue && pageSize.HasValue)
                     ? (int)Math.Ceiling((double)totalCount / pageSize.Value)

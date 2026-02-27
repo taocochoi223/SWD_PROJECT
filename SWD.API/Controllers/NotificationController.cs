@@ -25,24 +25,36 @@ namespace SWD.API.Controllers
         {
             try
             {
-                // Validate userId
+                // RBAC: Only owner or ADMIN can see specific user's notifications
+                var currentUserIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                                         ?? User.FindFirst("UserId")?.Value;
+                var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value?.ToUpper();
+
+                if (userRole != "ADMIN" && currentUserIdClaim != userId.ToString())
+                {
+                    return Forbid("Bạn không có quyền xem thông báo của người khác");
+                }
+
                 if (userId <= 0)
                     return BadRequest(new { message = "UserId không hợp lệ" });
 
                 var notis = await _notiService.GetUserNotificationsAsync(userId);
-
+                
                 var notiDtos = notis.Select(n => new NotificationDto
                 {
-                    NotiId = n.NotiId,
+                    Id = n.NotiId,
                     RuleId = n.RuleId,
                     UserId = n.UserId,
                     Message = n.Message,
-                    SentAt = n.SentAt,
-                    IsRead = n.IsRead,
-                    SensorId = n.Rule?.SensorId,
                     SensorName = n.Rule?.Sensor?.Name,
-                    Severity = n.Rule?.Priority, // Map Priority to Severity
-                    TriggeredAt = n.SentAt // Notification sent time is trigger time
+                    Location = $"{n.Rule?.Sensor?.Hub?.Site?.Name} - {n.Rule?.Sensor?.Hub?.Name}",
+                    Value = ExtractValueFromMessage(n.Message),
+                    MetricUnit = n.Rule?.Sensor?.Type?.Unit,
+                    Severity = n.Rule?.Priority,
+                    Status = "Active",
+                    Time = n.SentAt,
+                    IsRead = n.IsRead,
+                    SensorId = n.Rule?.SensorId
                 }).ToList();
 
                 var unreadCount = notiDtos.Count(n => n.IsRead == false);
@@ -51,7 +63,7 @@ namespace SWD.API.Controllers
                 {
                     message = notiDtos.Count > 0 
                         ? "Lấy danh sách thông báo thành công" 
-                        : "Người dùng chưa có thông báo nào",
+                        : "Thông báo trống",
                     userId = userId,
                     count = notiDtos.Count,
                     unreadCount = unreadCount,
@@ -72,7 +84,16 @@ namespace SWD.API.Controllers
         {
             try
             {
-                // Validate userId
+                // RBAC: Only owner or ADMIN can see specific user's unread count
+                var currentUserIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                                         ?? User.FindFirst("UserId")?.Value;
+                var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value?.ToUpper();
+
+                if (userRole != "ADMIN" && currentUserIdClaim != userId.ToString())
+                {
+                    return Forbid();
+                }
+
                 if (userId <= 0)
                     return BadRequest(new { message = "UserId không hợp lệ" });
 
@@ -101,13 +122,142 @@ namespace SWD.API.Controllers
         {
             try
             {
-                await _notiService.MarkAsReadAsync(id);
+                // RBAC: Pass current userId to ensure user only marks their own notification as read
+                var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value?.ToUpper();
+                var currentUserIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                                         ?? User.FindFirst("UserId")?.Value;
+
+                int? currentUserId = null;
+                if (userRole != "ADMIN" && int.TryParse(currentUserIdClaim, out int parsedId))
+                {
+                    currentUserId = parsedId;
+                }
+                
+                await _notiService.MarkAsReadAsync(id, currentUserId);
                 return Ok(new { message = "Đánh dấu thông báo đã đọc thành công", id = id });
             }
             catch (Exception ex)
             {
                 return BadRequest(new { message = "Lỗi khi đánh dấu thông báo: " + ex.Message });
             }
+        }
+
+        /// <summary>
+        /// Get Notification History with Paging and Filtering
+        /// </summary>
+        [HttpGet("history")]
+        public async Task<IActionResult> GetHistoryAsync(
+            [FromQuery] int? userId = null,
+            [FromQuery] int? siteId = null,
+            [FromQuery] int? sensorId = null,
+            [FromQuery] string? severity = null,
+            [FromQuery] DateTime? from = null,
+            [FromQuery] DateTime? to = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                // Role-based Access Control (RBAC)
+                var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value?.ToUpper();
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                                  ?? User.FindFirst("UserId")?.Value;
+                var userSiteIdClaim = User.FindFirst("SiteId")?.Value;
+
+                if (string.IsNullOrEmpty(userIdClaim))
+                    return Unauthorized(new { message = "Không tìm thấy thông tin định danh người dùng" });
+
+                int currentUserId = int.Parse(userIdClaim);
+                
+                if (userRole == "ADMIN")
+                {
+                    // Admin can view everything, use siteId and userId from query if provided
+                    // No overrides needed
+                }
+                else if (userRole == "MANAGER" || userRole == "STAFF")
+                {
+                    // Staff/Manager can only see history of their assigned Site
+                    if (string.IsNullOrEmpty(userSiteIdClaim) || !int.TryParse(userSiteIdClaim, out int assignedSiteId))
+                    {
+                        return Ok(new { 
+                            message = "Tài khoản của bạn chưa được gán khu vực quản lý", 
+                            data = new List<NotificationDto>(), 
+                            totalCount = 0 
+                        });
+                    }
+                    
+                    // Force their assigned site filtering
+                    siteId = assignedSiteId;
+
+                    // Security: STAFF can ONLY see their own notifications
+                    // MANAGER can see their own by default, or others in their site if they pass userId
+                    // (But since siteId is forced, they can't see other sites)
+                    if (userRole == "STAFF")
+                    {
+                        userId = currentUserId;
+                    }
+                    else if (!userId.HasValue)
+                    {
+                        userId = currentUserId;
+                    }
+                }
+                else 
+                {
+                    // Other roles: Only see their own notifications
+                    userId = currentUserId;
+                    siteId = null; // Don't allow them to filter by site if they are just regular users
+                }
+
+                var (items, totalCount) = await _notiService.GetNotificationsHistoryAsync(
+                    userId, siteId, sensorId, severity, from, to, page, pageSize);
+
+                var notiDtos = items.Select(n => new NotificationDto
+                {
+                    Id = n.NotiId,
+                    RuleId = n.RuleId,
+                    UserId = n.UserId,
+                    Message = n.Message,
+                    SensorName = n.Rule?.Sensor?.Name,
+                    Location = $"{n.Rule?.Sensor?.Hub?.Site?.Name} - {n.Rule?.Sensor?.Hub?.Name}",
+                    Value = ExtractValueFromMessage(n.Message),
+                    MetricUnit = n.Rule?.Sensor?.Type?.Unit,
+                    Severity = n.Rule?.Priority,
+                    Status = "Active",
+                    Time = n.SentAt,
+                    IsRead = n.IsRead,
+                    SensorId = n.Rule?.SensorId
+                }).ToList();
+
+                return Ok(new
+                {
+                    message = "Lấy lịch sử cảnh báo thành công",
+                    totalCount = totalCount,
+                    page = page,
+                    pageSize = pageSize,
+                    totalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                    data = notiDtos
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy lịch sử cảnh báo: " + ex.Message });
+            }
+        }
+
+        private double? ExtractValueFromMessage(string? message)
+        {
+            if (string.IsNullOrEmpty(message)) return null;
+            try
+            {
+                // Format: "... (Value: 45.5 > Max: 40)"
+                var parts = message.Split(new[] { "Value: ", " >", " <", ")" }, StringSplitOptions.None);
+                if (parts.Length > 1)
+                {
+                    if (double.TryParse(parts[1], out double val)) return val;
+                }
+            }
+            catch { }
+            return null;
         }
     }
 }

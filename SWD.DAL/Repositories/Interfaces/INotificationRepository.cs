@@ -14,10 +14,21 @@ namespace SWD.DAL.Repositories.Interfaces
         Task<List<Notification>> GetNotificationsByUserIdAsync(int userId);
 
         // 3. Đánh dấu đã đọc (Khi user bấm vào xem)
-        Task MarkAsReadAsync(long notiId);
+        Task MarkAsReadAsync(long notiId, int? userId = null);
 
         // 4. Tìm danh sách User cần nhận thông báo (VD: Lỗi ở Site A thì chỉ gửi cho Staff Site A)
         Task<List<User>> GetUsersBySiteIdAsync(int siteId);
+
+        // 5. Lấy lịch sử thông báo có phân trang và lọc
+        Task<(List<Notification> Items, int TotalCount)> GetNotificationsHistoryAsync(
+            int? userId = null,
+            int? siteId = null,
+            int? sensorId = null,
+            string? severity = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int pageNumber = 1,
+            int pageSize = 20);
 
         // ================= COMMON =================
         Task SaveChangesAsync();
