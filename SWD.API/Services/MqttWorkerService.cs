@@ -7,6 +7,7 @@ using MQTTnet.Client;
 using SWD.API.Dtos;
 using SWD.BLL.Interfaces;
 using SWD.DAL.Models;
+using HubModel = SWD.DAL.Models.Hub;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
@@ -149,7 +150,7 @@ namespace SWD.API.Services
 
                 if (isOnline)
                 {
-                    var hubsToNotify = new List<Hub>();
+                    var hubsToNotify = new List<HubModel>();
                     foreach (var hub in allHubs)
                     {
                         bool wasOffline = hub.IsOnline != true;
