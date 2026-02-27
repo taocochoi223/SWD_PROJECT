@@ -79,35 +79,27 @@ namespace SWD.API.Services
             var thresholdTime = vietnamNow.AddSeconds(-OfflineThresholdSeconds);
             var offlineHubs = onlineHubs.Where(h => (h.LastHandshake ?? DateTime.MinValue) < thresholdTime).ToList();
 
-            // Step 1: Set all hubs OFFLINE first (in parallel)
-            var hubOfflineTasks = offlineHubs.Select(async hub =>
+            // Step 1: Set all hubs OFFLINE first
+            foreach (var hub in offlineHubs)
             {
-                using var innerScope = _scopeFactory.CreateScope();
-                var innerHubService = innerScope.ServiceProvider.GetRequiredService<IHubService>();
-
                 hub.IsOnline = false;
-                await innerHubService.UpdateHubAsync(hub);
+                await hubService.UpdateHubAsync(hub);
                 await BroadcastHubStatusChange(hub.HubId, false, hub.LastHandshake);
-            });
-            await Task.WhenAll(hubOfflineTasks);
+            }
 
-            // Step 2: THEN set all sensors OFFLINE (in parallel)
-            var sensorOfflineTasks = offlineHubs.Select(async hub =>
+            // Step 2: THEN set all sensors OFFLINE
+            foreach (var hub in offlineHubs)
             {
-                using var innerScope = _scopeFactory.CreateScope();
-                var innerSensorService = innerScope.ServiceProvider.GetRequiredService<ISensorService>();
-
-                var sensors = await innerSensorService.GetSensorsByHubIdAsync(hub.HubId);
-                var tasks = sensors
-                    .Where(s => s.Status != "Offline")
-                    .Select(async sensor =>
+                var sensors = await sensorService.GetSensorsByHubIdAsync(hub.HubId);
+                foreach (var sensor in sensors)
+                {
+                    if (sensor.Status != "Offline")
                     {
-                        await innerSensorService.UpdateSensorStatusAsync(sensor.SensorId, "Offline");
+                        await sensorService.UpdateSensorStatusAsync(sensor.SensorId, "Offline");
                         await BroadcastSensorStatusChange(sensor.SensorId, "Offline", hub.HubId);
-                    });
-                await Task.WhenAll(tasks);
-            });
-            await Task.WhenAll(sensorOfflineTasks);
+                    }
+                }
+            }
         }
 
         private async Task BroadcastHubStatusChange(int hubId, bool isOnline, DateTime? lastHandshake = null)
