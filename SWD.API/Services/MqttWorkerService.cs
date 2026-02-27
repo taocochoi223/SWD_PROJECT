@@ -88,15 +88,11 @@ namespace SWD.API.Services
             _logger.LogInformation($"Subscribed to status topic: {statusTopic}");
         }
 
-        private Task MqttClient_DisconnectedAsync(MqttClientDisconnectedEventArgs arg)
+        private async Task MqttClient_DisconnectedAsync(MqttClientDisconnectedEventArgs arg)
         {
             _logger.LogWarning("Disconnected from MQTT Broker. Attempting to reconnect...");
-            Task.Run(async () =>
-            {
-                await Task.Delay(5000);
-                await ConnectToMqttAsync();
-            });
-            return Task.CompletedTask;
+            await Task.Delay(5000);
+            await ConnectToMqttAsync();
         }
 
         private async Task MqttClient_ApplicationMessageReceivedAsync(MqttApplicationMessageReceivedEventArgs e)
@@ -109,6 +105,12 @@ namespace SWD.API.Services
             string statusTopic = string.Format(StatusTopicTemplate, GatewayToken);
             if (topic == statusTopic)
             {
+                if (e.ApplicationMessage.Retain)
+                {
+                    _logger.LogWarning("[StatusMessage] Skipping retained message on startup: {payload}", payload);
+                    return;
+                }
+
                 await HandleStatusMessage(payload);
                 return;
             }
