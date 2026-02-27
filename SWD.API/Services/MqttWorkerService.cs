@@ -25,6 +25,9 @@ namespace SWD.API.Services
         private IMqttClient _mqttClient = null!;
         private MqttClientOptions _mqttOptions = null!;
 
+        // Lock để tránh race condition: status message và data message không được xử lý đồng thời
+        private readonly SemaphoreSlim _statusLock = new SemaphoreSlim(1, 1);
+
         private string Broker => _configuration["MqttSettings:Broker"] ?? "mqtt1.eoh.io";
         private int Port => int.Parse(_configuration["MqttSettings:Port"] ?? "1883");
         private string GatewayToken => _configuration["MqttSettings:GatewayToken"] ?? "";
@@ -125,6 +128,7 @@ namespace SWD.API.Services
 
         private async Task HandleGatewayStatusMessage(string payload)
         {
+            await _statusLock.WaitAsync();
             try
             {
                 using var doc = JsonDocument.Parse(payload);
@@ -175,7 +179,10 @@ namespace SWD.API.Services
                 }
                 else
                 {
+                    // {"ol":0} = Gateway tắt → offline TẤT CẢ hub ngay lập tức
+                    // Race condition đã được xử lý bởi SemaphoreSlim lock (line 29)
                     var onlineHubs = allHubs.Where(h => h.IsOnline == true).ToList();
+                    
                     foreach (var hub in onlineHubs)
                     {
                         hub.IsOnline = false;
@@ -196,17 +203,22 @@ namespace SWD.API.Services
             {
                 _logger.LogError(ex, "[GatewayStatus] Error processing gateway status message");
             }
+            finally
+            {
+                _statusLock.Release();
+            }
         }
 
         private async Task ProcessDataMessage(string chipId, string payload)
         {
-            using var scope = _scopeFactory.CreateScope();
-            var sensorService = scope.ServiceProvider.GetRequiredService<ISensorService>();
-            var hubService = scope.ServiceProvider.GetRequiredService<IHubService>();
-            var systemLogService = scope.ServiceProvider.GetRequiredService<ISystemLogService>();
-
+            await _statusLock.WaitAsync();
             try
             {
+                using var scope = _scopeFactory.CreateScope();
+                var sensorService = scope.ServiceProvider.GetRequiredService<ISensorService>();
+                var hubService = scope.ServiceProvider.GetRequiredService<IHubService>();
+                var systemLogService = scope.ServiceProvider.GetRequiredService<ISystemLogService>();
+
                 var data = JsonSerializer.Deserialize<EohWebhookDto>(payload);
                 if (data == null) return;
 
@@ -258,6 +270,10 @@ namespace SWD.API.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error processing MQTT message from chipId: {chipId}");
+            }
+            finally
+            {
+                _statusLock.Release();
             }
         }
 
