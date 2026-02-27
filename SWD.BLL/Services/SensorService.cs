@@ -68,7 +68,7 @@ namespace SWD.BLL.Services
             {
                 var sensorData = new SensorData();
                 sensorData.SensorId = sensorId;
-                sensorData.HubId = sensor.HubId; // Inherit HubId from Sensor
+                sensorData.HubId = sensor.HubId;
                 sensorData.Value = value;
                 sensorData.RecordedAt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
 
