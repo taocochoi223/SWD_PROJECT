@@ -20,10 +20,8 @@ namespace SWD.API.Services
         private readonly IHubContext<SensorHub> _hubContext;
         private readonly IConfiguration _configuration;
 
-        private int CheckIntervalSeconds => int.Parse(_configuration["StatusMonitor:CheckIntervalSeconds"] ?? "10");
-
-        private int OfflineThresholdSeconds => int.Parse(_configuration["StatusMonitor:OfflineThresholdSeconds"] ?? "60");
-
+        private int CheckIntervalSeconds => int.Parse(_configuration["StatusMonitor:CheckIntervalSeconds"] ?? "30");
+        private int OfflineThresholdSeconds => int.Parse(_configuration["StatusMonitor:OfflineThresholdSeconds"] ?? "300");
         private int StartupGracePeriodSeconds => int.Parse(_configuration["StatusMonitor:StartupGracePeriodSeconds"] ?? "90");
 
         public StatusMonitorService(
@@ -92,7 +90,10 @@ namespace SWD.API.Services
                 hub.IsOnline = false;
                 await hubService.UpdateHubAsync(hub);
                 await BroadcastHubStatusChange(hub.HubId, false, hub.LastHandshake);
-                _logger.LogInformation($"StatusMonitorService: Hub {hub.HubId} ({hub.Name}) → OFFLINE");
+                var lastSeen = hub.LastHandshake.HasValue
+                    ? $"{(vietnamNow - hub.LastHandshake.Value).TotalSeconds:F0}s ago"
+                    : "never";
+                _logger.LogInformation($"StatusMonitorService: Hub {hub.HubId} ({hub.Name}) → OFFLINE (LastHandshake: {lastSeen}, threshold: {OfflineThresholdSeconds}s)");
             }
 
             foreach (var hub in offlineHubs)
