@@ -19,9 +19,13 @@ namespace SWD.API.Services
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IHubContext<SensorHub> _hubContext;
         private readonly IConfiguration _configuration;
+        private readonly DateTime _startupTime = DateTime.UtcNow;
 
         private int CheckIntervalSeconds => int.Parse(_configuration["StatusMonitor:CheckIntervalSeconds"] ?? "10");
-        private int OfflineThresholdSeconds => int.Parse(_configuration["StatusMonitor:OfflineThresholdSeconds"] ?? "15");
+        // Tăng từ 15s lên 60s để tránh false-offline khi device vừa bật
+        private int OfflineThresholdSeconds => int.Parse(_configuration["StatusMonitor:OfflineThresholdSeconds"] ?? "60");
+        // Thời gian grace period sau khi server khởi động (giây) - không check trong khoảng này
+        private int StartupGracePeriodSeconds => int.Parse(_configuration["StatusMonitor:StartupGracePeriodSeconds"] ?? "90");
 
         public StatusMonitorService(
             ILogger<StatusMonitorService> logger,
@@ -37,7 +41,11 @@ namespace SWD.API.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _logger.LogInformation("StatusMonitorService started.");
+            _logger.LogInformation("StatusMonitorService started. Grace period: {0}s", StartupGracePeriodSeconds);
+
+            // Chờ grace period để device có thời gian kết nối trước khi bắt đầu check
+            await Task.Delay(TimeSpan.FromSeconds(StartupGracePeriodSeconds), stoppingToken);
+            _logger.LogInformation("StatusMonitorService: Grace period ended, starting monitors.");
 
             while (!stoppingToken.IsCancellationRequested)
             {
