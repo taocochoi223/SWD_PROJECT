@@ -28,7 +28,9 @@ namespace SWD.DAL.Repositories.Interfaces
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int pageNumber = 1,
-            int pageSize = 20);
+            int pageSize = 20,
+            string? sortBy = null,
+            string? sortOrder = "desc");
 
         // ================= COMMON =================
         Task SaveChangesAsync();

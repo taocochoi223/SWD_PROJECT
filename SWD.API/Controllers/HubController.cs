@@ -17,20 +17,22 @@ namespace SWD.API.Controllers
         {
             _hubService = hubService;
         }
-        /// <summary>
-        /// Get all hubs
-        /// </summary>
+        /// <summary>Get all hubs</summary>
         /// <param name="search">Tìm kiếm theo tên hoặc địa chỉ MAC</param>
         /// <param name="isOnline">Lọc theo trạng thái online/offline</param>
         /// <param name="pageNumber">Số trang (bắt đầu từ 1). Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
         /// <param name="pageSize">Số lượng mỗi trang. Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
+        /// <param name="sortBy">Sắp xếp theo field: name | macAddress | isOnline | lastHandshake (default: hubId)</param>
+        /// <param name="sortOrder">Thứ tự sắp xếp: asc | desc (default: asc)</param>
         [HttpGet]
 
         public async Task<IActionResult> GetAllHubsAsync(
             [FromQuery] string? search = null,
             [FromQuery] bool? isOnline = null,
             [FromQuery] int? pageNumber = null,
-            [FromQuery] int? pageSize = null)
+            [FromQuery] int? pageSize = null,
+            [FromQuery] string? sortBy = null,
+            [FromQuery] string? sortOrder = "asc")
         {
             try
             {
@@ -42,7 +44,7 @@ namespace SWD.API.Controllers
                 var siteIdClaim = User.FindFirst("SiteId")?.Value;
                 int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
 
-                var (hubs, totalCount) = await _hubService.GetAllHubsAsync(search, isOnline, userSiteId, pageNumber, pageSize);
+                var (hubs, totalCount) = await _hubService.GetAllHubsAsync(search, isOnline, userSiteId, pageNumber, pageSize, sortBy, sortOrder);
 
                 int? totalPages = (pageNumber.HasValue && pageSize.HasValue)
                     ? (int)Math.Ceiling((double)totalCount / pageSize.Value)

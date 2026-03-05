@@ -7,7 +7,7 @@ namespace SWD.DAL.Repositories.Interfaces
     /// </summary>
     public interface ISiteRepository
     {
-        Task<List<Site>> GetAllSitesAsync(string? search = null, int? orgId = null);
+        Task<List<Site>> GetAllSitesAsync(string? search = null, int? orgId = null, string? sortBy = null, string? sortOrder = "asc");
         Task<Site?> GetSiteByIdAsync(int siteId);
         Task AddSiteAsync(Site site);
         Task UpdateSiteAsync(Site site);

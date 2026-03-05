@@ -20,7 +20,9 @@ namespace SWD.BLL.Interfaces
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int pageNumber = 1,
-            int pageSize = 20);
+            int pageSize = 20,
+            string? sortBy = null,
+            string? sortOrder = "desc");
     }
 
 }

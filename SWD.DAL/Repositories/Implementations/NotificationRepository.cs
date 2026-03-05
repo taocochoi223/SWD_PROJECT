@@ -70,7 +70,9 @@ namespace SWD.DAL.Repositories.Implementations
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int pageNumber = 1,
-            int pageSize = 20)
+            int pageSize = 20,
+            string? sortBy = null,
+            string? sortOrder = "desc")
         {
             var query = _context.Notifications
                 .Include(n => n.Rule)
@@ -104,9 +106,16 @@ namespace SWD.DAL.Repositories.Implementations
             // Total Count
             int totalCount = await query.CountAsync();
 
+            bool isDesc = sortOrder?.ToLower() == "desc";
+            query = sortBy?.ToLower() switch {
+                "sentat"   => isDesc ? query.OrderByDescending(n => n.SentAt)        : query.OrderBy(n => n.SentAt),
+                "severity" => isDesc ? query.OrderByDescending(n => n.Rule != null ? n.Rule.Priority : "") : query.OrderBy(n => n.Rule != null ? n.Rule.Priority : ""),
+                "isread"   => isDesc ? query.OrderByDescending(n => n.IsRead)        : query.OrderBy(n => n.IsRead),
+                _          => isDesc ? query.OrderByDescending(n => n.SentAt)        : query.OrderBy(n => n.SentAt)
+            };
+
             // Paging
             var items = await query
-                .OrderByDescending(n => n.SentAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

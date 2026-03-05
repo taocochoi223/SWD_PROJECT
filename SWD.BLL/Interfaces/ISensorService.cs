@@ -9,7 +9,7 @@ namespace SWD.BLL.Interfaces
 {
     public interface ISensorService
     {
-        Task<(List<Sensor> Sensors, int TotalCount)> GetAllSensorsAsync(int? hubId = null, int? typeId = null, string? search = null, string? status = null, int? siteId = null, int? pageNumber = null, int? pageSize = null);
+        Task<(List<Sensor> Sensors, int TotalCount)> GetAllSensorsAsync(int? hubId = null, int? typeId = null, string? search = null, string? status = null, int? siteId = null, int? pageNumber = null, int? pageSize = null, string? sortBy = null, string? sortOrder = "asc");
         Task<Sensor?> GetSensorByIdAsync(int sensorId);       
         Task ProcessReadingAsync(int sensorId, float value);
         Task<List<SensorData>> GetSensorReadingsAsync(int sensorId, DateTime from, DateTime to);        

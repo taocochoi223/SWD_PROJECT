@@ -31,7 +31,7 @@ namespace SWD.DAL.Repositories.Implementations
                 .FirstOrDefaultAsync(h => h.HubId == hubId);
         }
 
-        public async Task<List<Hub>> GetAllHubsAsync(string? search = null, bool? isOnline = null, int? siteId = null)
+        public async Task<List<Hub>> GetAllHubsAsync(string? search = null, bool? isOnline = null, int? siteId = null, string? sortBy = null, string? sortOrder = "asc")
         {
             var query = _context.Hubs
                 .Include(s => s.Sensors)
@@ -55,6 +55,15 @@ namespace SWD.DAL.Repositories.Implementations
             {
                 query = query.Where(h => h.IsOnline == isOnline.Value);
             }
+
+            bool isDesc = sortOrder?.ToLower() == "desc";
+            query = sortBy?.ToLower() switch {
+                "name"          => isDesc ? query.OrderByDescending(h => h.Name)          : query.OrderBy(h => h.Name),
+                "macaddress"    => isDesc ? query.OrderByDescending(h => h.MacAddress)    : query.OrderBy(h => h.MacAddress),
+                "isonline"      => isDesc ? query.OrderByDescending(h => h.IsOnline)      : query.OrderBy(h => h.IsOnline),
+                "lasthandshake" => isDesc ? query.OrderByDescending(h => h.LastHandshake) : query.OrderBy(h => h.LastHandshake), // ← THÊM
+                _               => isDesc ? query.OrderByDescending(h => h.HubId)         : query.OrderBy(h => h.HubId)
+            };
 
             return await query.ToListAsync();
         }
