@@ -26,12 +26,16 @@ namespace SWD.API.Controllers
         /// <param name="search">Tìm kiếm theo tên hoặc mô tả</param>
         /// <param name="pageNumber">Số trang (bắt đầu từ 1). Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
         /// <param name="pageSize">Số lượng mỗi trang. Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
+        /// <param name="sortBy">Sắp xếp theo field: name | createdAt (default: orgId)</param>
+        /// <param name="sortOrder">Thứ tự sắp xếp: asc | desc (default: asc)</param>
         [HttpGet]
         [Authorize(Roles = "Admin,ADMIN")]
         public async Task<IActionResult> GetAllOrganizationsAsync(
             [FromQuery] string? search = null,
             [FromQuery] int? pageNumber = null,
-            [FromQuery] int? pageSize = null)
+            [FromQuery] int? pageSize = null,
+            [FromQuery] string? sortBy = null,
+            [FromQuery] string? sortOrder = "asc")
         {
             try
             {
@@ -40,7 +44,7 @@ namespace SWD.API.Controllers
                 if (pageSize.HasValue && pageSize.Value < 1)
                     return BadRequest(new { message = "pageSize phải lớn hơn hoặc bằng 1" });
 
-                var (orgs, totalCount) = await _organizationService.GetAllOrganizationsAsync(search, pageNumber, pageSize);
+                var (orgs, totalCount) = await _organizationService.GetAllOrganizationsAsync(search, pageNumber, pageSize, sortBy, sortOrder);
 
                 int? totalPages = (pageNumber.HasValue && pageSize.HasValue)
                     ? (int)Math.Ceiling((double)totalCount / pageSize.Value)

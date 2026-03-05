@@ -35,7 +35,7 @@ namespace SWD.DAL.Repositories.Implementations
 
 
 
-        public async Task<List<Sensor>> GetAllSensorsAsync(int? hubId = null, int? typeId = null, string? search = null, string? status = null, int? siteId = null)
+        public async Task<List<Sensor>> GetAllSensorsAsync(int? hubId = null, int? typeId = null, string? search = null, string? status = null, int? siteId = null, string? sortBy = null, string? sortOrder = "asc")
         {
             var query = _context.Sensors
                 .Include(s => s.Hub)
@@ -69,7 +69,15 @@ namespace SWD.DAL.Repositories.Implementations
                 query = query.Where(s => s.Status != null && s.Status.ToLower() == statusTrimmed);
             }
 
-            return await query.OrderBy(s => s.HubId).ToListAsync();
+            bool isDesc = sortOrder?.ToLower() == "desc";
+            query = sortBy?.ToLower() switch {
+                "name"     => isDesc ? query.OrderByDescending(s => s.Name)     : query.OrderBy(s => s.Name),
+                "status"   => isDesc ? query.OrderByDescending(s => s.Status)   : query.OrderBy(s => s.Status),
+                "hubid"    => isDesc ? query.OrderByDescending(s => s.HubId)    : query.OrderBy(s => s.HubId),
+                "type"     => isDesc ? query.OrderByDescending(s => s.TypeId)   : query.OrderBy(s => s.TypeId),
+                _          => isDesc ? query.OrderByDescending(s => s.SensorId) : query.OrderBy(s => s.SensorId)
+            };
+            return await query.ToListAsync();
         }
 
         public async Task AddReadingAsync(SensorData sensorData)

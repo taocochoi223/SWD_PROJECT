@@ -29,7 +29,7 @@ namespace SWD.DAL.Repositories.Implementations
                 .ToListAsync();
         }
 
-        public async Task<List<AlertRule>> GetAllRulesAsync(string? search, bool? isActive, string? priority, int? siteId = null)
+        public async Task<List<AlertRule>> GetAllRulesAsync(string? search, bool? isActive, string? priority, int? siteId = null, string? sortBy = null, string? sortOrder = "asc")
         {
             var query = _context.AlertRules
                 .Include(r => r.Sensor)
@@ -60,6 +60,15 @@ namespace SWD.DAL.Repositories.Implementations
             {
                 query = query.Where(r => r.Sensor.Hub.SiteId == siteId.Value);
             }
+
+            bool isDesc = sortOrder?.ToLower() == "desc";
+            query = sortBy?.ToLower() switch {
+                "name"     => isDesc ? query.OrderByDescending(r => r.Name)     : query.OrderBy(r => r.Name),
+                "priority" => isDesc ? query.OrderByDescending(r => r.Priority) : query.OrderBy(r => r.Priority),
+                "isactive" => isDesc ? query.OrderByDescending(r => r.IsActive) : query.OrderBy(r => r.IsActive),
+                "sensorid" => isDesc ? query.OrderByDescending(r => r.SensorId) : query.OrderBy(r => r.SensorId),
+                _          => isDesc ? query.OrderByDescending(r => r.RuleId)   : query.OrderBy(r => r.RuleId)
+            };
 
             return await query.ToListAsync();
         }

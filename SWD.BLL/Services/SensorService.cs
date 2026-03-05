@@ -15,9 +15,9 @@ namespace SWD.BLL.Services
             _alertService = alertService;
         }
 
-        public async Task<(List<Sensor> Sensors, int TotalCount)> GetAllSensorsAsync(int? hubId = null, int? typeId = null, string? search = null, string? status = null, int? siteId = null, int? pageNumber = null, int? pageSize = null)
+        public async Task<(List<Sensor> Sensors, int TotalCount)> GetAllSensorsAsync(int? hubId = null, int? typeId = null, string? search = null, string? status = null, int? siteId = null, int? pageNumber = null, int? pageSize = null, string? sortBy = null, string? sortOrder = "asc")
         {
-            var sensors = await _sensorRepo.GetAllSensorsAsync(hubId, typeId, search, status, siteId);
+            var sensors = await _sensorRepo.GetAllSensorsAsync(hubId, typeId, search, status, siteId, sortBy, sortOrder);
             var totalCount = sensors.Count;
 
             if (pageNumber.HasValue && pageSize.HasValue)

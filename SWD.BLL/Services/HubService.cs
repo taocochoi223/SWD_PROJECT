@@ -22,9 +22,9 @@ namespace SWD.BLL.Services
         {
             return await _hubRepo.GetHubByIdAsync(hubId);
         }
-        public async Task<(List<Hub> Hubs, int TotalCount)> GetAllHubsAsync(string? search = null, bool? isOnline = null, int? siteId = null, int? pageNumber = null, int? pageSize = null)
+        public async Task<(List<Hub> Hubs, int TotalCount)> GetAllHubsAsync(string? search = null, bool? isOnline = null, int? siteId = null, int? pageNumber = null, int? pageSize = null, string? sortBy = null, string? sortOrder = "asc")
         {
-            var hubs = await _hubRepo.GetAllHubsAsync(search, isOnline, siteId);
+            var hubs = await _hubRepo.GetAllHubsAsync(search, isOnline, siteId, sortBy, sortOrder);
             var totalCount = hubs.Count;
 
             if (pageNumber.HasValue && pageSize.HasValue)

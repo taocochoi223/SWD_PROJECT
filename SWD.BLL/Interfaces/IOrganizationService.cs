@@ -7,7 +7,7 @@ namespace SWD.BLL.Interfaces
     public interface IOrganizationService
     {
         Task<IEnumerable<Organization>> GetAllOrganizationsAsync();
-        Task<(List<Organization> Orgs, int TotalCount)> GetAllOrganizationsAsync(string? search, int? pageNumber, int? pageSize);
+        Task<(List<Organization> Orgs, int TotalCount)> GetAllOrganizationsAsync(string? search, int? pageNumber, int? pageSize, string? sortBy = null, string? sortOrder = "asc");
         Task<Organization?> GetOrganizationByIdAsync(int id);
         Task<Organization> CreateOrganizationAsync(Organization organization);
         Task UpdateOrganizationAsync(Organization organization);

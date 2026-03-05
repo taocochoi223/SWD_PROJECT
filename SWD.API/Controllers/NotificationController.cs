@@ -145,6 +145,8 @@ namespace SWD.API.Controllers
         /// <summary>
         /// Get Notification History with Paging and Filtering
         /// </summary>
+        /// <param name="sortBy">Sắp xếp theo field: sentAt | severity | isRead (default: sentAt)</param>
+        /// <param name="sortOrder">Thứ tự sắp xếp: asc | desc (default: desc)</param>
         [HttpGet("history")]
         public async Task<IActionResult> GetHistoryAsync(
             [FromQuery] int? userId = null,
@@ -154,7 +156,9 @@ namespace SWD.API.Controllers
             [FromQuery] DateTime? from = null,
             [FromQuery] DateTime? to = null,
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20)
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? sortBy = null,
+            [FromQuery] string? sortOrder = "desc")
         {
             try
             {
@@ -209,7 +213,7 @@ namespace SWD.API.Controllers
                 }
 
                 var (items, totalCount) = await _notiService.GetNotificationsHistoryAsync(
-                    userId, siteId, sensorId, severity, from, to, page, pageSize);
+                    userId, siteId, sensorId, severity, from, to, page, pageSize, sortBy, sortOrder);
 
                 var notiDtos = items.Select(n => new NotificationDto
                 {

@@ -9,7 +9,7 @@ namespace SWD.DAL.Repositories.Interfaces
     {
         Task<Hub?> GetHubByMacAddressAsync(string macAddress);
         Task<Hub?> GetHubByIdAsync(int hubId);
-        Task<List<Hub>> GetAllHubsAsync(string? search = null, bool? isOnline = null, int? siteId = null);
+        Task<List<Hub>> GetAllHubsAsync(string? search = null, bool? isOnline = null, int? siteId = null, string? sortBy = null, string? sortOrder = "asc");
         Task AddHubAsync(Hub hub);
         Task DeleteHubAsync(int hubId);
         Task UpdateHubAsync(Hub hub);

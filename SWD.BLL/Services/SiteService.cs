@@ -13,9 +13,9 @@ namespace SWD.BLL.Services
             _siteRepo = siteRepo;
         }
 
-        public async Task<(List<Site> Sites, int TotalCount)> GetAllSitesAsync(string? search = null, int? orgId = null, int? pageNumber = null, int? pageSize = null)
+        public async Task<(List<Site> Sites, int TotalCount)> GetAllSitesAsync(string? search = null, int? orgId = null, int? pageNumber = null, int? pageSize = null, string? sortBy = null, string? sortOrder = "asc")
         {
-            var sites = await _siteRepo.GetAllSitesAsync(search, orgId);
+            var sites = await _siteRepo.GetAllSitesAsync(search, orgId, sortBy, sortOrder);
             var totalCount = sites.Count;
 
             if (pageNumber.HasValue && pageSize.HasValue)

@@ -52,10 +52,12 @@ namespace SWD.BLL.Services
             DateTime? fromDate = null,
             DateTime? toDate = null,
             int pageNumber = 1,
-            int pageSize = 20)
+            int pageSize = 20,
+            string? sortBy = null,
+            string? sortOrder = "desc")
         {
             return await _repo.GetNotificationsHistoryAsync(
-                userId, siteId, sensorId, severity, fromDate, toDate, pageNumber, pageSize);
+                userId, siteId, sensorId, severity, fromDate, toDate, pageNumber, pageSize, sortBy, sortOrder);
         }
     }
 }

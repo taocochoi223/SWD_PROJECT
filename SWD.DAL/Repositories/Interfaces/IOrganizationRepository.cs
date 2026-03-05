@@ -7,7 +7,7 @@ namespace SWD.DAL.Repositories.Interfaces
     public interface IOrganizationRepository
     {
         Task<IEnumerable<Organization>> GetAllAsync();
-        Task<IEnumerable<Organization>> GetAllAsync(string? search);
+        Task<IEnumerable<Organization>> GetAllAsync(string? search, string? sortBy = null, string? sortOrder = "asc");
         Task<Organization?> GetByIdAsync(int id);
         Task<Organization> AddAsync(Organization organization);
         Task UpdateAsync(Organization organization);

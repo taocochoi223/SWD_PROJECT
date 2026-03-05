@@ -28,6 +28,8 @@ namespace SWD.API.Controllers
         /// <param name="priority">Lọc theo mức độ ưu tiên (High, Medium, Low...)</param>
         /// <param name="pageNumber">Số trang (bắt đầu từ 1). Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
         /// <param name="pageSize">Số lượng mỗi trang. Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
+        /// <param name="sortBy">Sắp xếp theo field: name | priority | isActive | sensorId (default: ruleId)</param>
+        /// <param name="sortOrder">Thứ tự sắp xếp: asc | desc (default: asc)</param>
         [HttpGet("rules")]
         [Authorize(Roles = "Admin,ADMIN,Manager,MANAGER")]
         public async Task<IActionResult> GetAllRulesAsync(
@@ -35,7 +37,9 @@ namespace SWD.API.Controllers
             [FromQuery] bool? isActive = null,
             [FromQuery] string? priority = null,
             [FromQuery] int? pageNumber = null,
-            [FromQuery] int? pageSize = null)
+            [FromQuery] int? pageSize = null,
+            [FromQuery] string? sortBy = null,
+            [FromQuery] string? sortOrder = "asc")
         {
             try
             {
@@ -56,7 +60,7 @@ namespace SWD.API.Controllers
                 if (pageSize.HasValue && pageSize.Value < 1)
                     return BadRequest(new { message = "pageSize phải lớn hơn hoặc bằng 1" });
 
-                var (rules, totalCount) = await _alertService.GetAllRulesAsync(search, isActive, priority, siteId, pageNumber, pageSize);
+                var (rules, totalCount) = await _alertService.GetAllRulesAsync(search, isActive, priority, siteId, pageNumber, pageSize, sortBy, sortOrder);
 
                 int? totalPages = (pageNumber.HasValue && pageSize.HasValue)
                     ? (int)Math.Ceiling((double)totalCount / pageSize.Value)

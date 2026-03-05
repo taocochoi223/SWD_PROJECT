@@ -18,7 +18,7 @@ namespace SWD.DAL.Repositories.Implementations
 
 
 
-        public async Task<List<Site>> GetAllSitesAsync(string? search = null, int? orgId = null)
+        public async Task<List<Site>> GetAllSitesAsync(string? search = null, int? orgId = null, string? sortBy = null, string? sortOrder = "asc")
         {
             var query = _context.Sites
                 .Include(s => s.Org)
@@ -37,6 +37,14 @@ namespace SWD.DAL.Repositories.Implementations
             {
                 query = query.Where(s => s.OrgId == orgId.Value);
             }
+
+            bool isDesc = sortOrder?.ToLower() == "desc";
+            query = sortBy?.ToLower() switch {
+                "name"    => isDesc ? query.OrderByDescending(s => s.Name)    : query.OrderBy(s => s.Name),
+                "address" => isDesc ? query.OrderByDescending(s => s.Address) : query.OrderBy(s => s.Address),
+                "orgid"   => isDesc ? query.OrderByDescending(s => s.OrgId)   : query.OrderBy(s => s.OrgId),
+                _         => isDesc ? query.OrderByDescending(s => s.SiteId)  : query.OrderBy(s => s.SiteId)
+            };
 
             return await query.ToListAsync();
         }

@@ -27,6 +27,9 @@ namespace SWD.API.Controllers
         /// <param name="status">Lọc theo trạng thái (Active, Inactive...)</param>
         /// <param name="pageNumber">Số trang (bắt đầu từ 1). Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
         /// <param name="pageSize">Số lượng mỗi trang. Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
+        /// <param name="sortBy">Sắp xếp theo field: name | status | hubId | type (default: sensorId)</param>
+        /// <param name="sortOrder">Thứ tự sắp xếp: asc | desc (default: asc)</param>
+
         [HttpGet]
         public async Task<IActionResult> GetAllSensorsAsync(
             [FromQuery] int? hub_id = null,
@@ -34,7 +37,9 @@ namespace SWD.API.Controllers
             [FromQuery] string? search = null,
             [FromQuery] string? status = null,
             [FromQuery] int? pageNumber = null,
-            [FromQuery] int? pageSize = null)
+            [FromQuery] int? pageSize = null,
+            [FromQuery] string? sortBy = null,
+            [FromQuery] string? sortOrder = "asc")
         {
             try
             {
@@ -46,7 +51,7 @@ namespace SWD.API.Controllers
                 var siteIdClaim = User.FindFirst("SiteId")?.Value;  
                 int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
 
-                var (sensors, totalCount) = await _sensorService.GetAllSensorsAsync(hub_id, type, search, status, userSiteId, pageNumber, pageSize);
+                var (sensors, totalCount) = await _sensorService.GetAllSensorsAsync(hub_id, type, search, status, userSiteId, pageNumber, pageSize, sortBy, sortOrder);
 
                 int? totalPages = (pageNumber.HasValue && pageSize.HasValue)
                     ? (int)Math.Ceiling((double)totalCount / pageSize.Value)

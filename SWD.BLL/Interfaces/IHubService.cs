@@ -9,7 +9,7 @@ namespace SWD.BLL.Interfaces
     {
         Task<Hub?> GetHubByMacAsync(string macAddress);
         Task<Hub?> GetHubByIdAsync(int hubId);
-        Task<(List<Hub> Hubs, int TotalCount)> GetAllHubsAsync(string? search = null, bool? isOnline = null, int? siteId = null, int? pageNumber = null, int? pageSize = null);
+        Task<(List<Hub> Hubs, int TotalCount)> GetAllHubsAsync(string? search = null, bool? isOnline = null, int? siteId = null, int? pageNumber = null, int? pageSize = null, string? sortBy = null, string? sortOrder = "asc");
         Task CreateHubAsync(Hub hub);
         Task UpdateHubAsync(Hub hub);
         Task DeleteHubAsync(int hubId);
