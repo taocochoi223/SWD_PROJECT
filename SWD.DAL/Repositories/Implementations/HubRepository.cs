@@ -28,6 +28,7 @@ namespace SWD.DAL.Repositories.Implementations
             return await _context.Hubs
                 .Include(h => h.Site)
                 .Include(h => h.Sensors)
+                .Include(h => h.SensorDatas)
                 .FirstOrDefaultAsync(h => h.HubId == hubId);
         }
 
