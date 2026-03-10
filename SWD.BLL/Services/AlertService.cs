@@ -2,6 +2,7 @@ using SWD.BLL.Interfaces;
 using SWD.DAL.Models;
 using SWD.DAL.Repositories.Interfaces;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace SWD.BLL.Services
 {
@@ -13,18 +14,22 @@ namespace SWD.BLL.Services
         private readonly INotificationRepository _notiRepo;
         private readonly IRealtimeService _realtimeService;
 
+        private readonly ILogger<AlertService> _logger;
+
         public AlertService(
             ISensorRepository sensorRepo,
             IAlertRepository alertRepo,
             INotificationService notiService,
             INotificationRepository notiRepo,
-            IRealtimeService realtimeService)
+            IRealtimeService realtimeService,
+            ILogger<AlertService> logger)
         {
             _sensorRepo = sensorRepo;
             _alertRepo = alertRepo;
             _notiService = notiService;
             _notiRepo = notiRepo;
             _realtimeService = realtimeService;
+            _logger = logger;
         }
 
         public async Task CheckAndTriggerAlertAsync(SensorData sensorData)
@@ -41,22 +46,30 @@ namespace SWD.BLL.Services
             {
                 double? numericValue = null;
                 string unit = "";
+                string ruleName = rule.Name ?? "";
                 
-                // Identify which field to check based on Rule Name
-                if (rule.Name!.Contains("Temperature") || rule.Name.Contains("Nhiệt độ")) {
-                    if (root.TryGetProperty("v1", out var v1)) numericValue = v1.GetDouble();
+                // Identify which field to check based on Rule Name (case-insensitive)
+                if (ruleName.Contains("Temperature", StringComparison.OrdinalIgnoreCase) || 
+                    ruleName.Contains("Nhiệt độ", StringComparison.OrdinalIgnoreCase)) {
+                    if (root.TryGetProperty("v1", out var v1)) numericValue = GetSafeDouble(v1);
                     unit = "°C";
                 }
-                else if (rule.Name.Contains("Humidity") || rule.Name.Contains("Độ ẩm")) {
-                    if (root.TryGetProperty("v2", out var v2)) numericValue = v2.GetDouble();
+                else if (ruleName.Contains("Humidity", StringComparison.OrdinalIgnoreCase) || 
+                         ruleName.Contains("Độ ẩm", StringComparison.OrdinalIgnoreCase)) {
+                    if (root.TryGetProperty("v2", out var v2)) numericValue = GetSafeDouble(v2);
                     unit = "%";
                 }
-                else if (rule.Name.Contains("Pressure") || rule.Name.Contains("Áp suất")) {
-                    if (root.TryGetProperty("v3", out var v3)) numericValue = v3.GetDouble();
+                else if (ruleName.Contains("Pressure", StringComparison.OrdinalIgnoreCase) || 
+                         ruleName.Contains("Áp suất", StringComparison.OrdinalIgnoreCase)) {
+                    if (root.TryGetProperty("v3", out var v3)) numericValue = GetSafeDouble(v3);
                     unit = "hPa";
                 }
 
-                if (!numericValue.HasValue) continue;
+                if (!numericValue.HasValue) 
+                {
+                    _logger.LogDebug($"Rule '{ruleName}' skipped: No matching metric (v1/v2/v3) found in JSON.");
+                    continue;
+                }
 
                 bool isTriggered = false;
                 string message = "";
@@ -84,18 +97,29 @@ namespace SWD.BLL.Services
 
                 if (isTriggered)
                 {
-                    // OrgId is now available on Rule
+                    _logger.LogInformation($"[ALERT TRIGGERED] Rule: {rule.Name}, Val: {numericValue}, Limits: {rule.MinVal}-{rule.MaxVal}");
+                    
                     var users = await _notiRepo.GetUsersByOrgIdAsync(rule.OrgId); 
+                    if (!users.Any()) _logger.LogWarning($"Alert triggered for rule {rule.Name} but NO USERS found for OrgId {rule.OrgId}");
+
                     foreach (var u in users)
                     {
                         var newNoti = await _notiService.CreateNotificationAsync(u.UserId, rule.RuleId, message);
                         if (newNoti != null)
                         {
+                            _logger.LogInformation($"Sending SignalR alert to User {u.UserId} for Rule {rule.Name}");
                             await _realtimeService.SendAlertSignalAsync(u.UserId, newNoti);
                         }
                     }
                 }
             }
+        }
+
+        private double? GetSafeDouble(JsonElement element)
+        {
+            if (element.ValueKind == JsonValueKind.Number) return element.GetDouble();
+            if (element.ValueKind == JsonValueKind.String && double.TryParse(element.GetString(), out double val)) return val;
+            return null;
         }
 
         public async Task<List<AlertRule>> GetAllRulesAsync()

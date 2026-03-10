@@ -205,7 +205,7 @@ namespace SWD.API.Controllers
                         Readings = hub.SensorDatas?.OrderByDescending(d => d.RecordedAt).Take(1).Select(r => new ReadingValueDto
                         {
                             RecordedAt = r.RecordedAt ?? DateTime.MinValue,
-                            Value = float.TryParse(r.JsonValue, out float val) ? val : 0
+                            Value = ExtractCurrentValue(r.JsonValue, s.Type?.TypeName) ?? 0
                         }).ToList() ?? new List<ReadingValueDto>()
                     }).ToList()
                 };
