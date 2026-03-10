@@ -7,7 +7,8 @@ public partial class AlertRule
 {
     public int RuleId { get; set; }
 
-    public int SensorId { get; set; }
+    public int OrgId { get; set; }
+    public int HubId { get; set; }
 
     public string? Name { get; set; }
 
@@ -25,5 +26,6 @@ public partial class AlertRule
 
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 
-    public virtual Sensor Sensor { get; set; } = null!;
+    public virtual Organization Organization { get; set; } = null!;
+    public virtual Hub Hub { get; set; } = null!;
 }

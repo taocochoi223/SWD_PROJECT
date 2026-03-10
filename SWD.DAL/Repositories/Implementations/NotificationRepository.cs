@@ -23,15 +23,11 @@ namespace SWD.DAL.Repositories.Implementations
 
         public async Task<List<Notification>> GetNotificationsByUserIdAsync(int userId)
         {
-            // Lấy 20 thông báo mới nhất, kèm đầy đủ thông tin địa điểm và loại cảm biến
+            // Lấy 20 thông báo mới nhất, kèm đầy đủ thông tin địa điểm
             return await _context.Notifications
                 .Include(n => n.Rule)
-                    .ThenInclude(r => r.Sensor)
-                        .ThenInclude(s => s.Hub)
-                            .ThenInclude(h => h.Site)
-                .Include(n => n.Rule)
-                    .ThenInclude(r => r.Sensor)
-                        .ThenInclude(s => s.Type)
+                    .ThenInclude(r => r.Hub)
+                        .ThenInclude(h => h.Site)
                 .Where(n => n.UserId == userId)
                 .OrderByDescending(n => n.SentAt)
                 .Take(20)
@@ -54,11 +50,17 @@ namespace SWD.DAL.Repositories.Implementations
 
         public async Task<List<User>> GetUsersBySiteIdAsync(int siteId)
         {
-            // Lấy tất cả người dùng thuộc Site đó (Staff/Manager)
-            // CỘNG VỚI tất cả ADMIN (Admin được nhận mọi cảnh báo của mọi Site)
             return await _context.Users
                 .Include(u => u.Role)
                 .Where(u => u.SiteId == siteId || u.Role.RoleName == "ADMIN")
+                .ToListAsync();
+        }
+
+        public async Task<List<User>> GetUsersByOrgIdAsync(int orgId)
+        {
+            return await _context.Users
+                .Include(u => u.Role)
+                .Where(u => u.OrgId == orgId || u.Role.RoleName == "ADMIN")
                 .ToListAsync();
         }
 
@@ -76,12 +78,8 @@ namespace SWD.DAL.Repositories.Implementations
         {
             var query = _context.Notifications
                 .Include(n => n.Rule)
-                    .ThenInclude(r => r.Sensor)
-                        .ThenInclude(s => s.Hub)
-                            .ThenInclude(h => h.Site)
-                .Include(n => n.Rule)
-                    .ThenInclude(r => r.Sensor)
-                        .ThenInclude(s => s.Type)
+                    .ThenInclude(r => r.Hub)
+                        .ThenInclude(h => h.Site)
                 .AsQueryable();
 
             // Filters
@@ -89,10 +87,11 @@ namespace SWD.DAL.Repositories.Implementations
                 query = query.Where(n => n.UserId == userId.Value);
 
             if (siteId.HasValue)
-                query = query.Where(n => n.Rule.Sensor.Hub.SiteId == siteId.Value);
+                query = query.Where(n => n.Rule.Hub.SiteId == siteId.Value);
 
-            if (sensorId.HasValue)
-                query = query.Where(n => n.Rule.SensorId == sensorId.Value);
+            // sensorId filter is now tricky since Rule is on Hub level
+            // Skipping or adjusting as needed
+            // if (sensorId.HasValue) ... 
 
             if (!string.IsNullOrEmpty(severity))
                 query = query.Where(n => n.Rule.Priority == severity);

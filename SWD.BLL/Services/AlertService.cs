@@ -1,6 +1,7 @@
 using SWD.BLL.Interfaces;
 using SWD.DAL.Models;
 using SWD.DAL.Repositories.Interfaces;
+using System.Text.Json;
 
 namespace SWD.BLL.Services
 {
@@ -28,54 +29,70 @@ namespace SWD.BLL.Services
 
         public async Task CheckAndTriggerAlertAsync(SensorData sensorData)
         {
-            // 1. Get Active Rules for this Sensor
-            var rules = await _alertRepo.GetActiveRulesBySensorIdAsync(sensorData.SensorId);
+            // 1. Get Active Rules for this Hub
+            var rules = await _alertRepo.GetActiveRulesByHubIdAsync(sensorData.HubId);
             if (rules == null || !rules.Any()) return;
 
-            var sensor = await _sensorRepo.GetSensorByIdAsync(sensorData.SensorId);
-            double roundedValue = Math.Round(sensorData.Value, 2);
-
+            // 2. Parse JSON
+            using var doc = JsonDocument.Parse(sensorData.JsonValue);
+            var root = doc.RootElement;
+            
             foreach (var rule in rules)
             {
+                double? numericValue = null;
+                string unit = "";
+                
+                // Identify which field to check based on Rule Name
+                if (rule.Name!.Contains("Temperature") || rule.Name.Contains("Nhiệt độ")) {
+                    if (root.TryGetProperty("v1", out var v1)) numericValue = v1.GetDouble();
+                    unit = "°C";
+                }
+                else if (rule.Name.Contains("Humidity") || rule.Name.Contains("Độ ẩm")) {
+                    if (root.TryGetProperty("v2", out var v2)) numericValue = v2.GetDouble();
+                    unit = "%";
+                }
+                else if (rule.Name.Contains("Pressure") || rule.Name.Contains("Áp suất")) {
+                    if (root.TryGetProperty("v3", out var v3)) numericValue = v3.GetDouble();
+                    unit = "hPa";
+                }
+
+                if (!numericValue.HasValue) continue;
+
                 bool isTriggered = false;
                 string message = "";
 
-                // 2. Check Condition
-                if (rule.ConditionType == "MinMax")
+                // MinMax logic (User showns MinMax condition in SQL but rule names are usually specific)
+                // If ConditionType is MinMax or Range
+                if ((rule.ConditionType == "MinMax" || rule.ConditionType == "Range") && rule.MinVal.HasValue && rule.MaxVal.HasValue)
                 {
-                    if (rule.MaxVal.HasValue && sensorData.Value > rule.MaxVal.Value)
+                    if (numericValue < rule.MinVal.Value || numericValue > rule.MaxVal.Value)
                     {
                         isTriggered = true;
-                        message = $"Cảnh báo: Sensor {sensor?.Name ?? sensorData.SensorId.ToString()} vượt ngưỡng (Value: {roundedValue} > Max: {rule.MaxVal})";
+                        message = $"Cảnh báo '{rule.Name}': {numericValue}{unit} nằm ngoài ngưỡng ({rule.MinVal.Value} - {rule.MaxVal.Value})";
                     }
-                    else if (rule.MinVal.HasValue && sensorData.Value < rule.MinVal.Value)
-                    {
-                        isTriggered = true;
-                        message = $"Cảnh báo: Sensor {sensor?.Name ?? sensorData.SensorId.ToString()} dưới ngưỡng (Value: {roundedValue} < Min: {rule.MinVal})";
-                    }
+                }
+                else if (rule.ConditionType == "Greater" && rule.MaxVal.HasValue && numericValue > rule.MaxVal.Value)
+                {
+                    isTriggered = true;
+                    message = $"Cảnh báo '{rule.Name}': {numericValue}{unit} vượt ngưỡng tối đa {rule.MaxVal.Value}";
+                }
+                else if (rule.ConditionType == "Less" && rule.MinVal.HasValue && numericValue < rule.MinVal.Value)
+                {
+                    isTriggered = true;
+                    message = $"Cảnh báo '{rule.Name}': {numericValue}{unit} thấp hơn ngưỡng tối thiểu {rule.MinVal.Value}";
                 }
 
                 if (isTriggered)
                 {
-                    if (sensor != null && sensor.Hub != null)
+                    // OrgId is now available on Rule
+                    var users = await _notiRepo.GetUsersByOrgIdAsync(rule.OrgId); 
+                    foreach (var u in users)
                     {
-                         var users = await _notiRepo.GetUsersBySiteIdAsync(sensor.Hub.SiteId);
-                         foreach (var u in users)
-                         {
-                              var newNoti = await _notiService.CreateNotificationAsync(u.UserId, rule.RuleId, message);
-                              
-                              // Push real-time signal to FE - KHỚP ĐỊNH DẠNG DASHBOARD API
-                              await _realtimeService.SendAlertSignalAsync(u.UserId, new {
-                                  id = newNoti.NotiId,
-                                  sensorName = sensor.Name,
-                                  location = $"{sensor.Hub?.Site?.Name} - {sensor.Hub?.Name}",
-                                  value = roundedValue,
-                                  metricUnit = sensor.Type?.Unit ?? "",
-                                  severity = rule.Priority ?? "Info",
-                                  status = "Active",
-                                  time = newNoti.SentAt
-                              });
-                         }
+                        var newNoti = await _notiService.CreateNotificationAsync(u.UserId, rule.RuleId, message);
+                        if (newNoti != null)
+                        {
+                            await _realtimeService.SendAlertSignalAsync(u.UserId, newNoti);
+                        }
                     }
                 }
             }

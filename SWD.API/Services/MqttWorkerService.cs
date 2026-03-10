@@ -277,6 +277,7 @@ namespace SWD.API.Services
                 await ProcessSensorReading(sensorService, sensors, "Temperature", data.v1, hub.HubId);
                 await ProcessSensorReading(sensorService, sensors, "Humidity", data.v2, hub.HubId);
                 await ProcessSensorReading(sensorService, sensors, "Pressure", data.v3, hub.HubId);
+                await sensorService.ProcessHubDataAsync(hub.HubId, payload);
             }
             catch (Exception ex)
             {
@@ -293,7 +294,6 @@ namespace SWD.API.Services
             var sensor = sensors.FirstOrDefault(s => s.Type != null && s.Type.TypeName.Equals(typeName, StringComparison.OrdinalIgnoreCase));
             if (sensor == null) return;
 
-            await sensorService.ProcessReadingAsync(sensor.SensorId, (float)value);
             await BroadcastSensorData(sensor.SensorId, value, hubId);
 
             if (sensor.Status != "Online")

@@ -69,12 +69,10 @@ namespace SWD.API.Controllers
                 var ruleDtos = rules.Select(r => new AlertRuleDto
                 {
                     RuleId = r.RuleId,
-                    SensorId = r.SensorId,
-                    SensorName = r.Sensor?.Name,
-                    SiteId = r.Sensor?.Hub?.SiteId,
-                    SiteName = r.Sensor?.Hub?.Site?.Name,
-                    HubId = r.Sensor?.HubId,
-                    HubName = r.Sensor?.Hub?.Name,
+                    OrgId = r.OrgId,
+                    OrgName = r.Organization?.Name,
+                    HubId = r.HubId,
+                    HubName = r.Hub?.Name,
                     Name = r.Name,
                     ConditionType = r.ConditionType,
                     MinVal = r.MinVal,
@@ -116,9 +114,9 @@ namespace SWD.API.Controllers
                 if (request.Name.Length < 2)
                     return BadRequest(new { message = "Tên quy tắc phải có ít nhất 2 ký tự" });
 
-                // Validate SensorId
-                if (request.SensorId <= 0)
-                    return BadRequest(new { message = "SensorId không hợp lệ. Vui lòng chọn cảm biến cho quy tắc" });
+                // Validate OrgId and HubId
+                if (request.OrgId <= 0 || request.HubId <= 0)
+                    return BadRequest(new { message = "OrgId hoặc HubId không hợp lệ." });
 
                 // Validate Min/Max values
                 if (request.MinVal.HasValue && request.MaxVal.HasValue)
@@ -133,7 +131,8 @@ namespace SWD.API.Controllers
 
                 var rule = new AlertRule
                 {
-                    SensorId = request.SensorId,
+                    OrgId = request.OrgId,
+                    HubId = request.HubId,
                     Name = request.Name,
                     ConditionType = request.ConditionType,
                     MinVal = request.MinVal,
@@ -149,7 +148,8 @@ namespace SWD.API.Controllers
                 {
                     message = "Tạo quy tắc cảnh báo thành công",
                     ruleId = rule.RuleId,
-                    sensorId = rule.SensorId,
+                    orgId = rule.OrgId,
+                    hubId = rule.HubId,
                     name = rule.Name,
                     conditionType = rule.ConditionType
                 });

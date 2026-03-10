@@ -11,8 +11,8 @@ namespace SWD.BLL.Interfaces
     {
         Task<(List<Sensor> Sensors, int TotalCount)> GetAllSensorsAsync(int? hubId = null, int? typeId = null, string? search = null, string? status = null, int? siteId = null, int? pageNumber = null, int? pageSize = null, string? sortBy = null, string? sortOrder = "asc");
         Task<Sensor?> GetSensorByIdAsync(int sensorId);       
-        Task ProcessReadingAsync(int sensorId, float value);
-        Task<List<SensorData>> GetSensorReadingsAsync(int sensorId, DateTime from, DateTime to);        
+        Task ProcessHubDataAsync(int hubId, string jsonValue);
+        Task<List<SensorData>> GetSensorReadingsAsync(int hubId, DateTime from, DateTime to);        
         Task<List<SensorType>> GetAllSensorTypesAsync();
         Task<List<Sensor>> GetSensorsByHubIdAsync(int hubId);    
         Task<List<Sensor>> GetSensorsByTypeIdAsync(int typeId);  

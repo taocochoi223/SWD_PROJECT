@@ -5,7 +5,10 @@ namespace SWD.API.Dtos
     public class CreateAlertRuleDto
     {
         [Required]
-        public int SensorId { get; set; }
+        public int OrgId { get; set; }
+
+        [Required]
+        public int HubId { get; set; }
 
         [Required]
         public string Name { get; set; }

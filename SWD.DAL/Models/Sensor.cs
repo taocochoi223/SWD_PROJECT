@@ -15,11 +15,7 @@ public partial class Sensor
 
     public string? Status { get; set; }
 
-    public virtual ICollection<AlertRule> AlertRules { get; set; } = new List<AlertRule>();
-
     public virtual Hub Hub { get; set; } = null!;
-
-    public virtual ICollection<SensorData> SensorDatas { get; set; } = new List<SensorData>();
 
     public virtual SensorType Type { get; set; } = null!;
 }

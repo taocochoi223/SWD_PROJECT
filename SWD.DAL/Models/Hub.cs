@@ -21,5 +21,7 @@ public partial class Hub
 
     public virtual ICollection<SensorData> SensorDatas { get; set; } = new List<SensorData>();
 
+    public virtual ICollection<AlertRule> AlertRules { get; set; } = new List<AlertRule>();
+
     public virtual Site Site { get; set; } = null!;
 }

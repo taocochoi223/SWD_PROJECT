@@ -86,15 +86,14 @@ namespace SWD.DAL.Repositories.Implementations
         }
 
         public async Task<List<SensorData>> GetReadingsForChartAsync(
-            int sensorId,
+            int hubId,
             DateTime from,
             DateTime to)
         {
             return await _context.SensorDatas
                 .AsNoTracking()
-                .Include(r => r.Sensor)
-                    .ThenInclude(s => s.Type)
-                .Where(r => r.SensorId == sensorId &&
+                .Include(r => r.Hub)
+                .Where(r => r.HubId == hubId &&
                             r.RecordedAt.HasValue &&
                             r.RecordedAt.Value >= from &&
                             r.RecordedAt.Value <= to)
