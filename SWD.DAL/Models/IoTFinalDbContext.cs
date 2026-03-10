@@ -74,12 +74,18 @@ public partial class IoTFinalDbContext : DbContext
                 .HasMaxLength(50)
                 .IsUnicode(false);
             entity.Property(e => e.Priority).HasMaxLength(20);
-            entity.Property(e => e.SensorId).HasColumnName("SensorID");
+            entity.Property(e => e.OrgId).HasColumnName("OrgID");
+            entity.Property(e => e.HubId).HasColumnName("HubID");
 
-            entity.HasOne(d => d.Sensor).WithMany(p => p.AlertRules)
-                .HasForeignKey(d => d.SensorId)
+            entity.HasOne(d => d.Organization).WithMany(p => p.AlertRules)
+                .HasForeignKey(d => d.OrgId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__AlertRule__Senso__571DF1D5");
+                .HasConstraintName("FK_AlertRule_Organization");
+
+            entity.HasOne(d => d.Hub).WithMany(p => p.AlertRules)
+                .HasForeignKey(d => d.HubId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_AlertRule_Hub");
         });
 
         modelBuilder.Entity<Hub>(entity =>
@@ -119,6 +125,7 @@ public partial class IoTFinalDbContext : DbContext
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
             entity.Property(e => e.UserId).HasColumnName("UserID");
+            entity.Property(e => e.OrgId).HasColumnName("OrgID");
 
             entity.HasOne(d => d.Rule).WithMany(p => p.Notifications)
                 .HasForeignKey(d => d.RuleId)
@@ -129,6 +136,11 @@ public partial class IoTFinalDbContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__Notificat__UserI__619B8048");
+
+            entity.HasOne(d => d.Organization).WithMany(p => p.Notifications)
+                .HasForeignKey(d => d.OrgId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Notification_Organization");
         });
 
         modelBuilder.Entity<Organization>(entity =>
@@ -151,19 +163,14 @@ public partial class IoTFinalDbContext : DbContext
 
             entity.ToTable("SensorData");
 
-            entity.HasIndex(e => new { e.SensorId, e.RecordedAt }, "IDX_SensorData_Sensor_Time");
+            entity.HasIndex(e => new { e.HubId, e.RecordedAt }, "IDX_SensorData_Hub_Time");
 
             entity.Property(e => e.DataId).HasColumnName("DataID");
             entity.Property(e => e.RecordedAt)
                 .HasPrecision(3)
                 .HasDefaultValueSql("(getdate())");
-            entity.Property(e => e.SensorId).HasColumnName("SensorID");
             entity.Property(e => e.HubId).HasColumnName("HubID");
-
-            entity.HasOne(d => d.Sensor).WithMany(p => p.SensorDatas)
-                .HasForeignKey(d => d.SensorId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__SensorData__SensorI__49C3F6B7");
+            entity.Property(e => e.JsonValue).HasColumnName("JsonValue").IsUnicode(true);
 
             entity.HasOne(d => d.Hub).WithMany(p => p.SensorDatas)
                 .HasForeignKey(d => d.HubId)

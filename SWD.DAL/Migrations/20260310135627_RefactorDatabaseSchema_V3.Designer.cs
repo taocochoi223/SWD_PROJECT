@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SWD.DAL.Models;
 
@@ -11,9 +12,11 @@ using SWD.DAL.Models;
 namespace SWD.DAL.Migrations
 {
     [DbContext(typeof(IoTFinalDbContext))]
-    partial class IoTFinalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260310135627_RefactorDatabaseSchema_V3")]
+    partial class RefactorDatabaseSchema_V3
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -274,17 +277,16 @@ namespace SWD.DAL.Migrations
                         .HasColumnType("int")
                         .HasColumnName("HubID");
 
-                    b.Property<string>("JsonValue")
-                        .IsRequired()
-                        .IsUnicode(true)
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("JsonValue");
-
                     b.Property<DateTime?>("RecordedAt")
                         .ValueGeneratedOnAdd()
                         .HasPrecision(3)
                         .HasColumnType("datetime2(3)")
                         .HasDefaultValueSql("(getdate())");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .IsUnicode(true)
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("DataId")
                         .HasName("PK__SensorDa__C80F9C6E561FFF59");

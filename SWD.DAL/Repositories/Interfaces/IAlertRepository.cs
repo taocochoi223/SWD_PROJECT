@@ -4,7 +4,7 @@ namespace SWD.DAL.Repositories.Interfaces
 {
     public interface IAlertRepository
     {
-        Task<List<AlertRule>> GetActiveRulesBySensorIdAsync(int sensorId);
+        Task<List<AlertRule>> GetActiveRulesByHubIdAsync(int hubId);
         Task<List<AlertRule>> GetAllRulesAsync();
         Task<List<AlertRule>> GetAllRulesAsync(string? search, bool? isActive, string? priority, int? siteId = null, string? sortBy = null, string? sortOrder = "asc");
         Task CreateRuleAsync(AlertRule rule);

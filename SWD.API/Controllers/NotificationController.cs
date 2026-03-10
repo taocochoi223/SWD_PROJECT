@@ -46,15 +46,12 @@ namespace SWD.API.Controllers
                     RuleId = n.RuleId,
                     UserId = n.UserId,
                     Message = n.Message,
-                    SensorName = n.Rule?.Sensor?.Name,
-                    Location = $"{n.Rule?.Sensor?.Hub?.Site?.Name} - {n.Rule?.Sensor?.Hub?.Name}",
+                    Location = $"{n.Rule?.Hub?.Site?.Name} - {n.Rule?.Hub?.Name}",
                     Value = ExtractValueFromMessage(n.Message),
-                    MetricUnit = n.Rule?.Sensor?.Type?.Unit,
                     Severity = n.Rule?.Priority,
                     Status = "Active",
                     Time = n.SentAt,
-                    IsRead = n.IsRead,
-                    SensorId = n.Rule?.SensorId
+                    IsRead = n.IsRead
                 }).ToList();
 
                 var unreadCount = notiDtos.Count(n => n.IsRead == false);
@@ -221,15 +218,12 @@ namespace SWD.API.Controllers
                     RuleId = n.RuleId,
                     UserId = n.UserId,
                     Message = n.Message,
-                    SensorName = n.Rule?.Sensor?.Name,
-                    Location = $"{n.Rule?.Sensor?.Hub?.Site?.Name} - {n.Rule?.Sensor?.Hub?.Name}",
+                    Location = $"{n.Rule?.Hub?.Site?.Name} - {n.Rule?.Hub?.Name}",
                     Value = ExtractValueFromMessage(n.Message),
-                    MetricUnit = n.Rule?.Sensor?.Type?.Unit,
                     Severity = n.Rule?.Priority,
                     Status = "Active",
                     Time = n.SentAt,
-                    IsRead = n.IsRead,
-                    SensorId = n.Rule?.SensorId
+                    IsRead = n.IsRead
                 }).ToList();
 
                 return Ok(new

@@ -13,27 +13,26 @@ namespace SWD.DAL.Repositories.Implementations
             _context = context;
         }
 
-        public async Task<List<AlertRule>> GetActiveRulesBySensorIdAsync(int sensorId)
+        public async Task<List<AlertRule>> GetActiveRulesByHubIdAsync(int hubId)
         {
             return await _context.AlertRules
-                .Where(r => r.SensorId == sensorId && r.IsActive == true)
+                .Where(r => r.HubId == hubId && r.IsActive == true)
                 .ToListAsync();
         }
 
         public async Task<List<AlertRule>> GetAllRulesAsync()
         {
             return await _context.AlertRules
-                .Include(r => r.Sensor)
-                .ThenInclude(s => s.Hub)
+                .Include(r => r.Hub)
                 .ThenInclude(h => h.Site)
+                .ThenInclude(s => s.Org)
                 .ToListAsync();
         }
 
         public async Task<List<AlertRule>> GetAllRulesAsync(string? search, bool? isActive, string? priority, int? siteId = null, string? sortBy = null, string? sortOrder = "asc")
         {
             var query = _context.AlertRules
-                .Include(r => r.Sensor)
-                .ThenInclude(s => s.Hub)
+                .Include(r => r.Hub)
                 .ThenInclude(h => h.Site)
                 .AsQueryable();
 
@@ -41,8 +40,7 @@ namespace SWD.DAL.Repositories.Implementations
             {
                 var searchLower = search.Trim().ToLower();
                 query = query.Where(r =>
-                    (r.Name != null && r.Name.ToLower().Contains(searchLower)) ||
-                    (r.Sensor != null && r.Sensor.Name != null && r.Sensor.Name.ToLower().Contains(searchLower)));
+                    (r.Name != null && r.Name.ToLower().Contains(searchLower)));
             }
 
             if (isActive.HasValue)
@@ -58,7 +56,7 @@ namespace SWD.DAL.Repositories.Implementations
 
             if (siteId.HasValue)
             {
-                query = query.Where(r => r.Sensor.Hub.SiteId == siteId.Value);
+                query = query.Where(r => r.Hub.SiteId == siteId.Value);
             }
 
             bool isDesc = sortOrder?.ToLower() == "desc";
@@ -66,7 +64,7 @@ namespace SWD.DAL.Repositories.Implementations
                 "name"     => isDesc ? query.OrderByDescending(r => r.Name)     : query.OrderBy(r => r.Name),
                 "priority" => isDesc ? query.OrderByDescending(r => r.Priority) : query.OrderBy(r => r.Priority),
                 "isactive" => isDesc ? query.OrderByDescending(r => r.IsActive) : query.OrderBy(r => r.IsActive),
-                "sensorid" => isDesc ? query.OrderByDescending(r => r.SensorId) : query.OrderBy(r => r.SensorId),
+                "hubid"    => isDesc ? query.OrderByDescending(r => r.HubId)    : query.OrderBy(r => r.HubId),
                 _          => isDesc ? query.OrderByDescending(r => r.RuleId)   : query.OrderBy(r => r.RuleId)
             };
 

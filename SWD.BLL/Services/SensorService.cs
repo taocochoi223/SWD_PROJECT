@@ -45,9 +45,9 @@ namespace SWD.BLL.Services
             await _sensorRepo.AddSensorAsync(sensor);
             await _sensorRepo.SaveChangesAsync();
         }
-        public async Task<List<SensorData>> GetSensorReadingsAsync(int sensorId, DateTime from, DateTime to)
+        public async Task<List<SensorData>> GetSensorReadingsAsync(int hubId, DateTime from, DateTime to)
         {
-            return await _sensorRepo.GetReadingsForChartAsync(sensorId, from, to);
+            return await _sensorRepo.GetReadingsForChartAsync(hubId, from, to);
         }
 
         public async Task<List<SensorType>> GetAllSensorTypesAsync()
@@ -61,22 +61,19 @@ namespace SWD.BLL.Services
             await _sensorRepo.SaveChangesAsync();
         }
 
-        public async Task ProcessReadingAsync(int sensorId, float value)
+        public async Task ProcessHubDataAsync(int hubId, string jsonValue)
         {
-            var sensor = await _sensorRepo.GetSensorByIdAsync(sensorId);
-            if (sensor != null)
+            var sensorData = new SensorData
             {
-                var sensorData = new SensorData();
-                sensorData.SensorId = sensorId;
-                sensorData.HubId = sensor.HubId;
-                sensorData.Value = value;
-                sensorData.RecordedAt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"));
+                HubId = hubId,
+                JsonValue = jsonValue,
+                RecordedAt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"))
+            };
 
-                await _sensorRepo.AddReadingAsync(sensorData);
-                await _sensorRepo.SaveChangesAsync();
+            await _sensorRepo.AddReadingAsync(sensorData);
+            await _sensorRepo.SaveChangesAsync();
 
-                await _alertService.CheckAndTriggerAlertAsync(sensorData);
-            }
+            await _alertService.CheckAndTriggerAlertAsync(sensorData);
         }
 
         public async Task UpdateSensorStatusAsync(int sensorId, string status)

@@ -197,11 +197,8 @@ namespace SWD.API.Controllers
                 var readingDtos = readings.Select(r => new SensorDataDto
                 {
                     DataId = r.DataId,
-                    SensorId = r.SensorId,
                     HubId = r.HubId,
-                    SensorName = r.Sensor?.Name,
-                    SensorTypeName = r.Sensor?.Type?.TypeName,
-                    Value = r.Value,
+                    JsonValue = r.JsonValue,
                     RecordedAt = r.RecordedAt
                 }).ToList();
 

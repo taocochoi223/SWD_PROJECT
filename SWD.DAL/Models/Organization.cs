@@ -16,4 +16,8 @@ public partial class Organization
     public virtual ICollection<Site> Sites { get; set; } = new List<Site>();
 
     public virtual ICollection<User> Users { get; set; } = new List<User>();
+
+    public virtual ICollection<AlertRule> AlertRules { get; set; } = new List<AlertRule>();
+
+    public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 }

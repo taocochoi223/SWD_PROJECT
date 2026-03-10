@@ -350,10 +350,11 @@ namespace SWD.API.Controllers
                         Name = s.Name,
                         TypeName = s.Type?.TypeName ?? "Unknown",
                         Unit = s.Type?.Unit ?? "",
-                        Readings = s.SensorDatas?.Select(r => new ReadingValueDto
+                        // Hub level readings
+                        Readings = hub.SensorDatas?.Select(r => new ReadingValueDto
                         {
                             RecordedAt = r.RecordedAt ?? DateTime.MinValue,
-                            Value = (float)r.Value
+                            Value = ExtractValueFromJson(r.JsonValue, s.Type?.TypeName)
                         }).OrderByDescending(r => r.RecordedAt).ToList() ?? new List<ReadingValueDto>()
                     }).ToList() ?? new List<SensorReadingDto>()
                 };
@@ -370,5 +371,28 @@ namespace SWD.API.Controllers
             }
         }
 
+        private float ExtractValueFromJson(string? json, string? typeName)
+        {
+            if (string.IsNullOrEmpty(json) || string.IsNullOrEmpty(typeName)) return 0;
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                if (typeName.Contains("Temperature") || typeName.Contains("Nhiệt độ"))
+                {
+                    if (root.TryGetProperty("v1", out var v)) return (float)v.GetDouble();
+                }
+                else if (typeName.Contains("Humidity") || typeName.Contains("Độ ẩm"))
+                {
+                    if (root.TryGetProperty("v2", out var v)) return (float)v.GetDouble();
+                }
+                else if (typeName.Contains("Pressure") || typeName.Contains("Áp suất"))
+                {
+                    if (root.TryGetProperty("v3", out var v)) return (float)v.GetDouble();
+                }
+            }
+            catch { }
+            return 0;
+        }
     }
 }

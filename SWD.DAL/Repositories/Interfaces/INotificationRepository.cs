@@ -18,6 +18,7 @@ namespace SWD.DAL.Repositories.Interfaces
 
         // 4. Tìm danh sách User cần nhận thông báo (VD: Lỗi ở Site A thì chỉ gửi cho Staff Site A)
         Task<List<User>> GetUsersBySiteIdAsync(int siteId);
+        Task<List<User>> GetUsersByOrgIdAsync(int orgId);
 
         // 5. Lấy lịch sử thông báo có phân trang và lọc
         Task<(List<Notification> Items, int TotalCount)> GetNotificationsHistoryAsync(
