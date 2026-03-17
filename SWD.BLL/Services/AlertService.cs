@@ -13,7 +13,7 @@ namespace SWD.BLL.Services
         private readonly INotificationService _notiService;
         private readonly INotificationRepository _notiRepo;
         private readonly IRealtimeService _realtimeService;
-
+        private readonly IFirebaseService _firebaseService;
         private readonly ILogger<AlertService> _logger;
 
         public AlertService(
@@ -22,6 +22,7 @@ namespace SWD.BLL.Services
             INotificationService notiService,
             INotificationRepository notiRepo,
             IRealtimeService realtimeService,
+            IFirebaseService firebaseService,
             ILogger<AlertService> logger)
         {
             _sensorRepo = sensorRepo;
@@ -29,6 +30,7 @@ namespace SWD.BLL.Services
             _notiService = notiService;
             _notiRepo = notiRepo;
             _realtimeService = realtimeService;
+            _firebaseService = firebaseService;
             _logger = logger;
         }
 
@@ -107,8 +109,17 @@ namespace SWD.BLL.Services
                         var newNoti = await _notiService.CreateNotificationAsync(u.UserId, rule.RuleId, message);
                         if (newNoti != null)
                         {
-                            _logger.LogInformation($"Sending SignalR alert to User {u.UserId} for Rule {rule.Name}");
+                            _logger.LogInformation($"Sending SignalR and Firebase alert to User {u.UserId} for Rule {rule.Name}");
                             await _realtimeService.SendAlertSignalAsync(u.UserId, newNoti);
+                            
+                            // Push to Firebase for real-time mobile/web dashboard
+                            await _firebaseService.UpdateHubAlertAsync(rule.HubId ?? sensorData.HubId, new
+                            {
+                                message = message,
+                                priority = rule.Priority,
+                                time = sensorData.RecordedAt,
+                                ruleName = rule.Name
+                            });
                         }
                     }
                 }
