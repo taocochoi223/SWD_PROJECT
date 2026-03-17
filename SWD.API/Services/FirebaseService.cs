@@ -100,6 +100,24 @@ namespace SWD.API.Services
             }
         }
 
+        public async Task UpdateHubAlertAsync(int hubId, object alert)
+        {
+            try
+            {
+                await _firebaseClient
+                    .Child("Hubs")
+                    .Child(hubId.ToString())
+                    .Child("Alert")
+                    .PutAsync(alert);
+
+                _logger.LogInformation($"[Firebase] Pushed real-time alert for hub: {hubId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"[Firebase] Error pushing alert to Firebase for hub: {hubId}");
+            }
+        }
+
         public async Task UpdateHubStatusAsync(int hubId, bool isOnline)
         {
             try
