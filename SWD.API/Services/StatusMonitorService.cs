@@ -19,6 +19,7 @@ namespace SWD.API.Services
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IHubContext<SensorHub> _hubContext;
         private readonly IConfiguration _configuration;
+        private readonly IFirebaseService _firebaseService;
 
         private int CheckIntervalSeconds => int.Parse(_configuration["StatusMonitor:CheckIntervalSeconds"] ?? "10");
         private int OfflineThresholdSeconds => int.Parse(_configuration["StatusMonitor:OfflineThresholdSeconds"] ?? "60");
@@ -28,12 +29,14 @@ namespace SWD.API.Services
             ILogger<StatusMonitorService> logger,
             IServiceScopeFactory scopeFactory,
             IHubContext<SensorHub> hubContext,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IFirebaseService firebaseService)
         {
             _logger = logger;
             _scopeFactory = scopeFactory;
             _hubContext = hubContext;
             _configuration = configuration;
+            _firebaseService = firebaseService;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -89,6 +92,7 @@ namespace SWD.API.Services
             {
                 hub.IsOnline = false;
                 await hubService.UpdateHubAsync(hub);
+                await _firebaseService.UpdateHubStatusAsync(hub.HubId, false);
                 await BroadcastHubStatusChange(hub.HubId, false, hub.LastHandshake);
                 var lastSeen = hub.LastHandshake.HasValue
                     ? $"{(vietnamNow - hub.LastHandshake.Value).TotalSeconds:F0}s ago"

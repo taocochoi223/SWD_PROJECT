@@ -21,6 +21,7 @@ namespace SWD.API.Services
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IConfiguration _configuration;
         private readonly IHubContext<SensorHub> _hubContext;
+        private readonly IFirebaseService _firebaseService;
 
         private IMqttClient _mqttClient = null!;
         private MqttClientOptions _mqttOptions = null!;
@@ -41,12 +42,14 @@ namespace SWD.API.Services
             ILogger<MqttWorkerService> logger,
             IServiceScopeFactory scopeFactory,
             IConfiguration configuration,
-            IHubContext<SensorHub> hubContext)
+            IHubContext<SensorHub> hubContext,
+            IFirebaseService firebaseService)
         {
             _logger = logger;
             _scopeFactory = scopeFactory;
             _configuration = configuration;
             _hubContext = hubContext;
+            _firebaseService = firebaseService;
         }
 
         public override async Task StartAsync(CancellationToken cancellationToken)
@@ -165,6 +168,7 @@ namespace SWD.API.Services
                         hub.LastHandshake = vietnamNow;
                         hub.IsOnline = true;
                         await hubService.UpdateHubAsync(hub);
+                        await _firebaseService.UpdateHubStatusAsync(hub.HubId, true);
                         if (wasOffline) hubsToNotify.Add(hub);
                     }
 
@@ -191,6 +195,7 @@ namespace SWD.API.Services
                     {
                         hub.IsOnline = false;
                         await hubService.UpdateHubAsync(hub);
+                        await _firebaseService.UpdateHubStatusAsync(hub.HubId, false);
                         await BroadcastHubStatusChange(hub.HubId, false, hub.LastHandshake);
                         _logger.LogInformation($"[GatewayStatus] Hub {hub.HubId} ({hub.Name}) → OFFLINE");
 
@@ -272,6 +277,15 @@ namespace SWD.API.Services
                 }
 
                 await BroadcastHubEnvironmentData(hub.HubId, data.v1, data.v2, data.v3);
+
+                // Gửi dữ liệu lên Firebase để UI lấy cho nhanh (Không đợi lưu DB)
+                _ = _firebaseService.UpdateSensorDataAsync(chipId, new
+                {
+                    temperature = data.v1,
+                    humidity = data.v2,
+                    pressure = data.v3,
+                    updatedAt = vietnamNow
+                });
 
                 var sensors = await sensorService.GetSensorsByHubIdAsync(hub.HubId);
                 await ProcessSensorReading(sensorService, sensors, "Temperature", data.v1, hub.HubId);
