@@ -273,6 +273,7 @@ namespace SWD.API.Services
                 if (wasOffline)
                 {
                     _logger.LogInformation($"[MQTT] Hub {hub.HubId} ({hub.Name}) → ONLINE (MAC: {macAddress})");
+                    await _firebaseService.UpdateHubStatusAsync(hub.HubId, true);
                     await BroadcastHubStatusChange(hub.HubId, true, hub.LastHandshake);
                 }
 
