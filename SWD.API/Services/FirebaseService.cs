@@ -28,23 +28,37 @@ namespace SWD.API.Services
                 return;
             }
 
+            // --- SMART PATH DETECTION ---
+            // Render puts secret files in /etc/secrets/
+            string fullPath;
+            if (File.Exists("/etc/secrets/firebase_key.json"))
+            {
+                fullPath = "/etc/secrets/firebase_key.json";
+                _logger.LogInformation("Firebase key detected in Render secrets path.");
+            }
+            else
+            {
+                fullPath = Path.Combine(AppContext.BaseDirectory, configPath);
+                _logger.LogInformation($"Firebase key using local path: {fullPath}");
+            }
+
             // Initialize Firebase Admin SDK if not already initialized
             if (FirebaseApp.DefaultInstance == null)
             {
                 FirebaseApp.Create(new AppOptions()
                 {
-                    Credential = GoogleCredential.FromFile(Path.Combine(AppContext.BaseDirectory, configPath)),
+                    Credential = GoogleCredential.FromFile(fullPath),
                 });
             }
 
-            // Initialize FirebaseClient with a token factory
+            // Initialize FirebaseClient
             _firebaseClient = new FirebaseClient(
                 dbUrl,
                 new FirebaseOptions
                 {
                     AuthTokenAsyncFactory = async () =>
                     {
-                        var credential = GoogleCredential.FromFile(Path.Combine(AppContext.BaseDirectory, configPath))
+                        var credential = GoogleCredential.FromFile(fullPath)
                             .CreateScoped("https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/firebase.database");
                         return await credential.UnderlyingCredential.GetAccessTokenForRequestAsync();
                     }
