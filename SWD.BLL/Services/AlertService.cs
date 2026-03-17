@@ -113,7 +113,7 @@ namespace SWD.BLL.Services
                             await _realtimeService.SendAlertSignalAsync(u.UserId, newNoti);
                             
                             // Push to Firebase for real-time mobile/web dashboard
-                            await _firebaseService.UpdateHubAlertAsync(rule.HubId ?? sensorData.HubId, new
+                            await _firebaseService.UpdateHubAlertAsync(rule.HubId, new
                             {
                                 message = message,
                                 priority = rule.Priority,
