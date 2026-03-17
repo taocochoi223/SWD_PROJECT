@@ -278,8 +278,8 @@ namespace SWD.API.Services
 
                 await BroadcastHubEnvironmentData(hub.HubId, data.v1, data.v2, data.v3);
 
-                // Gửi dữ liệu lên Firebase để UI lấy cho nhanh (Không đợi lưu DB)
-                _ = _firebaseService.UpdateSensorDataAsync(chipId, new
+                // Gửi dữ liệu lên Firebase theo HubId để FE lấy cho dễ (Thống nhất 1 ID)
+                _ = _firebaseService.UpdateHubDataAsync(hub.HubId, new
                 {
                     temperature = data.v1,
                     humidity = data.v2,
