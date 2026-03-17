@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using SWD.BLL.Interfaces;
 using SWD.BLL.Services;
 using SWD.DAL.Models;
@@ -99,6 +99,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IRealtimeService, RealtimeService>();
+builder.Services.AddSingleton<IFirebaseService, FirebaseService>();
 
 builder.Services.AddHostedService<SWD.API.Services.MqttWorkerService>();
 builder.Services.AddHostedService<SWD.API.Services.StatusMonitorService>();

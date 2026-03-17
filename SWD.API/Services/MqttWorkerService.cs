@@ -21,12 +21,16 @@ namespace SWD.API.Services
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IConfiguration _configuration;
         private readonly IHubContext<SensorHub> _hubContext;
+        private readonly IFirebaseService _firebaseService;
 
         private IMqttClient _mqttClient = null!;
         private MqttClientOptions _mqttOptions = null!;
 
         // Lock để tránh race condition: status message và data message không được xử lý đồng thời
         private readonly SemaphoreSlim _statusLock = new SemaphoreSlim(1, 1);
+
+        // Cờ đánh dấu gateway đã tắt → bỏ qua data cũ buffered
+        private volatile bool _gatewayOffline = false;
 
         private string Broker => _configuration["MqttSettings:Broker"] ?? "mqtt1.eoh.io";
         private int Port => int.Parse(_configuration["MqttSettings:Port"] ?? "1883");
@@ -38,12 +42,14 @@ namespace SWD.API.Services
             ILogger<MqttWorkerService> logger,
             IServiceScopeFactory scopeFactory,
             IConfiguration configuration,
-            IHubContext<SensorHub> hubContext)
+            IHubContext<SensorHub> hubContext,
+            IFirebaseService firebaseService)
         {
             _logger = logger;
             _scopeFactory = scopeFactory;
             _configuration = configuration;
             _hubContext = hubContext;
+            _firebaseService = firebaseService;
         }
 
         public override async Task StartAsync(CancellationToken cancellationToken)
@@ -154,6 +160,7 @@ namespace SWD.API.Services
 
                 if (isOnline)
                 {
+                    _gatewayOffline = false; // Gateway bật → cho phép xử lý data
                     var hubsToNotify = new List<HubModel>();
                     foreach (var hub in allHubs)
                     {
@@ -161,6 +168,7 @@ namespace SWD.API.Services
                         hub.LastHandshake = vietnamNow;
                         hub.IsOnline = true;
                         await hubService.UpdateHubAsync(hub);
+                        await _firebaseService.UpdateHubStatusAsync(hub.HubId, true);
                         if (wasOffline) hubsToNotify.Add(hub);
                     }
 
@@ -180,13 +188,14 @@ namespace SWD.API.Services
                 else
                 {
                     // {"ol":0} = Gateway tắt → offline TẤT CẢ hub ngay lập tức
-                    // Race condition đã được xử lý bởi SemaphoreSlim lock (line 29)
+                    _gatewayOffline = true; // Chặn data cũ buffered
                     var onlineHubs = allHubs.Where(h => h.IsOnline == true).ToList();
                     
                     foreach (var hub in onlineHubs)
                     {
                         hub.IsOnline = false;
                         await hubService.UpdateHubAsync(hub);
+                        await _firebaseService.UpdateHubStatusAsync(hub.HubId, false);
                         await BroadcastHubStatusChange(hub.HubId, false, hub.LastHandshake);
                         _logger.LogInformation($"[GatewayStatus] Hub {hub.HubId} ({hub.Name}) → OFFLINE");
 
@@ -214,6 +223,13 @@ namespace SWD.API.Services
             await _statusLock.WaitAsync();
             try
             {
+                // Nếu gateway đã tắt → bỏ qua data cũ buffered
+                if (_gatewayOffline)
+                {
+                    _logger.LogWarning($"[MQTT] Skipping buffered data (gateway offline) - chipId: {chipId}");
+                    return;
+                }
+
                 using var scope = _scopeFactory.CreateScope();
                 var sensorService = scope.ServiceProvider.GetRequiredService<ISensorService>();
                 var hubService = scope.ServiceProvider.GetRequiredService<IHubService>();
@@ -261,6 +277,15 @@ namespace SWD.API.Services
                 }
 
                 await BroadcastHubEnvironmentData(hub.HubId, data.v1, data.v2, data.v3);
+
+                // Gửi dữ liệu lên Firebase để UI lấy cho nhanh (Không đợi lưu DB)
+                _ = _firebaseService.UpdateSensorDataAsync(chipId, new
+                {
+                    temperature = data.v1,
+                    humidity = data.v2,
+                    pressure = data.v3,
+                    updatedAt = vietnamNow
+                });
 
                 var sensors = await sensorService.GetSensorsByHubIdAsync(hub.HubId);
                 await ProcessSensorReading(sensorService, sensors, "Temperature", data.v1, hub.HubId);
