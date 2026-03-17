@@ -82,6 +82,24 @@ namespace SWD.API.Services
             }
         }
 
+        public async Task UpdateHubDataAsync(int hubId, object data)
+        {
+            try
+            {
+                await _firebaseClient
+                    .Child("Hubs")
+                    .Child(hubId.ToString())
+                    .Child("Data")
+                    .PutAsync(data);
+
+                _logger.LogInformation($"[Firebase] Updated environment data for Hub: {hubId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"[Firebase] Error updating environment data for Hub: {hubId}");
+            }
+        }
+
         public async Task UpdateHubStatusAsync(int hubId, bool isOnline)
         {
             try
