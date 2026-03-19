@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SWD.API.Dtos;
 using SWD.BLL.Interfaces;
@@ -192,7 +192,7 @@ namespace SWD.API.Controllers
                     toDate = DateTime.MaxValue;
                 }
 
-                var readings = await _sensorService.GetSensorReadingsAsync(id, fromDate, toDate);
+                var readings = await _sensorService.GetSensorReadingsAsync(sensor.HubId, fromDate, toDate);
 
                 var readingDtos = readings.Select(r => new SensorDataDto
                 {

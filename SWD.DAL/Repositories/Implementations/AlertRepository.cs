@@ -16,6 +16,7 @@ namespace SWD.DAL.Repositories.Implementations
         public async Task<List<AlertRule>> GetActiveRulesByHubIdAsync(int hubId)
         {
             return await _context.AlertRules
+                .Include(r => r.Hub)
                 .Where(r => r.HubId == hubId && r.IsActive == true)
                 .ToListAsync();
         }

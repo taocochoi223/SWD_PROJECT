@@ -110,8 +110,9 @@ namespace SWD.BLL.Services
                         ruleName = rule.Name
                     });
 
-                    var users = await _notiRepo.GetUsersByOrgIdAsync(rule.OrgId); 
-                    if (!users.Any()) _logger.LogWarning($"Alert triggered for rule {rule.Name} but NO USERS found for OrgId {rule.OrgId}");
+                    // CHỈ GỬI THÔNG BÁO CHO NHỮNG NHÂN VIÊN THUỘC SITE ĐÓ (Và Admin)
+                    var users = await _notiRepo.GetUsersBySiteIdAsync(rule.Hub.SiteId); 
+                    if (!users.Any()) _logger.LogWarning($"Alert triggered for rule {rule.Name} but NO USERS found for SiteId {rule.Hub.SiteId}");
 
                     foreach (var u in users)
                     {
