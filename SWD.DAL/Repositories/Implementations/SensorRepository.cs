@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using SWD.DAL.Models;
 using SWD.DAL.Repositories.Interfaces;
 
@@ -19,6 +19,8 @@ namespace SWD.DAL.Repositories.Implementations
             return await _context.Sensors
                 .Include(s => s.Hub)
                     .ThenInclude(h => h.Site)
+                .Include(s => s.Hub)
+                    .ThenInclude(h => h.AlertRules)
                 .Include(s => s.Type)
                 .FirstOrDefaultAsync(s => s.SensorId == sensorId);
         }
@@ -39,6 +41,7 @@ namespace SWD.DAL.Repositories.Implementations
         {
             var query = _context.Sensors
                 .Include(s => s.Hub)
+                    .ThenInclude(h => h.AlertRules)
                 .Include(s => s.Type)
                 .AsQueryable();
 

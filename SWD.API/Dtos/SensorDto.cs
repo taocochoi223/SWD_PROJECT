@@ -10,5 +10,11 @@ namespace SWD.API.Dtos
         public string? SensorName { get; set; }
         public double? CurrentValue { get; set; }
         public string? Status { get; set; }
+
+        // Alert Rule Info
+        public int? RuleId { get; set; }
+        public string? RuleName { get; set; }
+        public double? MinVal { get; set; }
+        public double? MaxVal { get; set; }
     }
 }
