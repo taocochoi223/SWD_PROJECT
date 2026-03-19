@@ -53,17 +53,32 @@ namespace SWD.BLL.Services
                 // Identify which field to check based on Rule Name (case-insensitive)
                 if (ruleName.Contains("Temperature", StringComparison.OrdinalIgnoreCase) || 
                     ruleName.Contains("Nhiệt độ", StringComparison.OrdinalIgnoreCase)) {
-                    if (root.TryGetProperty("v1", out var v1)) numericValue = GetSafeDouble(v1);
+                    if (root.TryGetProperty("temperature", out var val) || 
+                        root.TryGetProperty("Temperature", out val) || 
+                        root.TryGetProperty("v1", out val)) 
+                    {
+                        numericValue = GetSafeDouble(val);
+                    }
                     unit = "°C";
                 }
                 else if (ruleName.Contains("Humidity", StringComparison.OrdinalIgnoreCase) || 
                          ruleName.Contains("Độ ẩm", StringComparison.OrdinalIgnoreCase)) {
-                    if (root.TryGetProperty("v2", out var v2)) numericValue = GetSafeDouble(v2);
+                    if (root.TryGetProperty("humidity", out var val) || 
+                        root.TryGetProperty("Humidity", out val) || 
+                        root.TryGetProperty("v2", out val)) 
+                    {
+                        numericValue = GetSafeDouble(val);
+                    }
                     unit = "%";
                 }
                 else if (ruleName.Contains("Pressure", StringComparison.OrdinalIgnoreCase) || 
                          ruleName.Contains("Áp suất", StringComparison.OrdinalIgnoreCase)) {
-                    if (root.TryGetProperty("v3", out var v3)) numericValue = GetSafeDouble(v3);
+                    if (root.TryGetProperty("pressure", out var val) || 
+                        root.TryGetProperty("Pressure", out val) || 
+                        root.TryGetProperty("v3", out val)) 
+                    {
+                        numericValue = GetSafeDouble(val);
+                    }
                     unit = "hPa";
                 }
 
