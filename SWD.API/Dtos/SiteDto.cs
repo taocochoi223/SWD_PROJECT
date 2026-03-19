@@ -9,5 +9,13 @@ namespace SWD.API.Dtos
         public string? Address { get; set; }
         public string? GeoLocation { get; set; }
         public int HubCount { get; set; }
+        public List<HubSummaryDto> Hubs { get; set; } = new List<HubSummaryDto>();
+    }
+
+    public class HubSummaryDto
+    {
+        public int HubId { get; set; }
+        public string? Name { get; set; }
+        public bool? IsOnline { get; set; }
     }
 }

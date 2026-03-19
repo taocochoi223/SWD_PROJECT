@@ -12,10 +12,12 @@ namespace SWD.API.Controllers
     public class HubController : ControllerBase
     {
         private readonly IHubService _hubService;
+        private readonly ISensorService _sensorService;
 
-        public HubController(IHubService hubService)
+        public HubController(IHubService hubService, ISensorService sensorService)
         {
             _hubService = hubService;
+            _sensorService = sensorService;
         }
         /// <summary>Get Hubs - With optional filters</summary>
         /// <param name="search">Tìm kiếm theo tên hoặc địa chỉ MAC</param>
@@ -368,6 +370,65 @@ namespace SWD.API.Controllers
             catch (Exception ex)
             {
                 return BadRequest(new { message = "Lỗi khi lấy dữ liệu đo của Hub: " + ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get Sensors by Hub ID - For tree view
+        /// </summary>
+        [HttpGet("{id}/sensors")]
+        public async Task<IActionResult> GetSensorsByHubIdAsync(
+            int id,
+            [FromQuery] int? pageNumber = null,
+            [FromQuery] int? pageSize = null)
+        {
+            try
+            {
+                var hub = await _hubService.GetHubByIdAsync(id);
+                if (hub == null)
+                    return NotFound(new { message = "Không tìm thấy Hub với ID: " + id });
+
+                var (sensors, totalCount) = await _sensorService.GetAllSensorsAsync(
+                    hubId: id, 
+                    pageNumber: pageNumber, 
+                    pageSize: pageSize);
+
+                int? totalPages = (pageNumber.HasValue && pageSize.HasValue)
+                    ? (int)Math.Ceiling((double)totalCount / pageSize.Value)
+                    : null;
+
+                var sensorDtos = sensors.Select(s => {
+                    var rule = hub.AlertRules?.FirstOrDefault(r => r.TypeId == s.TypeId && (r.IsActive ?? true));
+                    return new SensorDto
+                    {
+                        SensorId = s.SensorId,
+                        HubId = s.HubId,
+                        HubName = s.Hub?.Name,
+                        TypeId = s.TypeId,
+                        TypeName = s.Type?.TypeName,
+                        SensorName = s.Name,
+                        CurrentValue = 0,
+                        Status = s.Status,
+                        RuleId = rule?.RuleId,
+                        RuleName = rule?.Name,
+                        MinVal = rule?.MinVal,
+                        MaxVal = rule?.MaxVal
+                    };
+                }).ToList();
+
+                return Ok(new
+                {
+                    message = "Lấy danh sách cảm biến thành công",
+                    totalCount,
+                    pageNumber,
+                    pageSize,
+                    totalPages,
+                    data = sensorDtos
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Lỗi khi lấy danh sách cảm biến: " + ex.Message });
             }
         }
 
