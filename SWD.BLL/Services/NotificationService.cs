@@ -1,4 +1,4 @@
-﻿using SWD.BLL.Interfaces;
+using SWD.BLL.Interfaces;
 using SWD.DAL.Models;
 using SWD.DAL.Repositories.Interfaces;
 using System;
@@ -18,12 +18,13 @@ namespace SWD.BLL.Services
             _repo = repo;
         }
 
-        public async Task<Notification> CreateNotificationAsync(int userId, int ruleId, string message)
+        public async Task<Notification> CreateNotificationAsync(int userId, int ruleId, int orgId, string message)
         {
             var noti = new Notification
             {
                 UserId = userId,
                 RuleId = ruleId,
+                OrgId = orgId,
                 Message = message,
                 IsRead = false,
                 SentAt = DateTime.Now
@@ -47,7 +48,7 @@ namespace SWD.BLL.Services
         public async Task<(List<Notification> Items, int TotalCount)> GetNotificationsHistoryAsync(
             int? userId = null,
             int? siteId = null,
-            int? sensorId = null,
+            int? hubId = null,
             string? severity = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -57,7 +58,7 @@ namespace SWD.BLL.Services
             string? sortOrder = "desc")
         {
             return await _repo.GetNotificationsHistoryAsync(
-                userId, siteId, sensorId, severity, fromDate, toDate, pageNumber, pageSize, sortBy, sortOrder);
+                userId, siteId, hubId, severity, fromDate, toDate, pageNumber, pageSize, sortBy, sortOrder);
         }
     }
 }

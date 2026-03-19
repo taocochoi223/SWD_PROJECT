@@ -1,8 +1,11 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace SWD.API.Dtos
 {
     public class UpdateAlertRuleDto
     {
         public string? Name { get; set; }
+        [RegularExpression("MinMax|Range|Greater|Less|Trend", ErrorMessage = "ConditionType must be 'MinMax', 'Range', 'Greater', 'Less' or 'Trend'")]
         public string? ConditionType { get; set; }
         public double? MinVal { get; set; }
         public double? MaxVal { get; set; }

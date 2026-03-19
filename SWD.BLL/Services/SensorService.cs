@@ -1,4 +1,4 @@
-﻿using SWD.BLL.Interfaces;
+using SWD.BLL.Interfaces;
 using SWD.DAL.Models;
 using SWD.DAL.Repositories.Interfaces;
 
@@ -70,10 +70,17 @@ namespace SWD.BLL.Services
                 RecordedAt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"))
             };
 
+            // CHẠY SONG SONG 2 TÁC VỤ ĐỂ MANG LẠI TRẢI NGHIỆM REALTIME TUYỆT ĐỐI!
+            var dbSaveTask = SaveReadingToDbAsync(sensorData);
+            var alertCheckTask = _alertService.CheckAndTriggerAlertAsync(sensorData);
+
+            await Task.WhenAll(dbSaveTask, alertCheckTask);
+        }
+
+        private async Task SaveReadingToDbAsync(SensorData sensorData)
+        {
             await _sensorRepo.AddReadingAsync(sensorData);
             await _sensorRepo.SaveChangesAsync();
-
-            await _alertService.CheckAndTriggerAlertAsync(sensorData);
         }
 
         public async Task UpdateSensorStatusAsync(int sensorId, string status)

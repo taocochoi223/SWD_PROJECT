@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using SWD.DAL.Models;
 using SWD.DAL.Repositories.Interfaces;
 
@@ -67,7 +67,7 @@ namespace SWD.DAL.Repositories.Implementations
         public async Task<(List<Notification> Items, int TotalCount)> GetNotificationsHistoryAsync(
             int? userId = null,
             int? siteId = null,
-            int? sensorId = null,
+            int? hubId = null,
             string? severity = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,
@@ -89,9 +89,8 @@ namespace SWD.DAL.Repositories.Implementations
             if (siteId.HasValue)
                 query = query.Where(n => n.Rule.Hub.SiteId == siteId.Value);
 
-            // sensorId filter is now tricky since Rule is on Hub level
-            // Skipping or adjusting as needed
-            // if (sensorId.HasValue) ... 
+            if (hubId.HasValue)
+                query = query.Where(n => n.Rule.HubId == hubId.Value);
 
             if (!string.IsNullOrEmpty(severity))
                 query = query.Where(n => n.Rule.Priority == severity);

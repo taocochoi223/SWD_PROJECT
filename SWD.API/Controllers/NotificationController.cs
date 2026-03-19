@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using SWD.API.Dtos;
 using SWD.BLL.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -45,6 +45,7 @@ namespace SWD.API.Controllers
                     Id = n.NotiId,
                     RuleId = n.RuleId,
                     UserId = n.UserId,
+                    OrgId = n.OrgId,
                     Message = n.Message,
                     Location = $"{n.Rule?.Hub?.Site?.Name} - {n.Rule?.Hub?.Name}",
                     Value = ExtractValueFromMessage(n.Message),
@@ -148,7 +149,7 @@ namespace SWD.API.Controllers
         public async Task<IActionResult> GetHistoryAsync(
             [FromQuery] int? userId = null,
             [FromQuery] int? siteId = null,
-            [FromQuery] int? sensorId = null,
+            [FromQuery] int? hubId = null,
             [FromQuery] string? severity = null,
             [FromQuery] DateTime? from = null,
             [FromQuery] DateTime? to = null,
@@ -210,13 +211,14 @@ namespace SWD.API.Controllers
                 }
 
                 var (items, totalCount) = await _notiService.GetNotificationsHistoryAsync(
-                    userId, siteId, sensorId, severity, from, to, page, pageSize, sortBy, sortOrder);
+                    userId, siteId, hubId, severity, from, to, page, pageSize, sortBy, sortOrder);
 
                 var notiDtos = items.Select(n => new NotificationDto
                 {
                     Id = n.NotiId,
                     RuleId = n.RuleId,
                     UserId = n.UserId,
+                    OrgId = n.OrgId,
                     Message = n.Message,
                     Location = $"{n.Rule?.Hub?.Site?.Name} - {n.Rule?.Hub?.Name}",
                     Value = ExtractValueFromMessage(n.Message),

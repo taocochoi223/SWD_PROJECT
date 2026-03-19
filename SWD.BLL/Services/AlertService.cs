@@ -101,25 +101,25 @@ namespace SWD.BLL.Services
                 {
                     _logger.LogInformation($"[ALERT TRIGGERED] Rule: {rule.Name}, Val: {numericValue}, Limits: {rule.MinVal}-{rule.MaxVal}");
                     
+                    // GỬI LÊN FIREBASE NGAY LẬP TỨC ĐỂ REALTIME NHANH NHẤT (Thay vì chờ vòng lặp SQL bên dưới)
+                    _ = _firebaseService.UpdateHubAlertAsync(rule.HubId, new
+                    {
+                        message = message,
+                        priority = rule.Priority,
+                        time = sensorData.RecordedAt,
+                        ruleName = rule.Name
+                    });
+
                     var users = await _notiRepo.GetUsersByOrgIdAsync(rule.OrgId); 
                     if (!users.Any()) _logger.LogWarning($"Alert triggered for rule {rule.Name} but NO USERS found for OrgId {rule.OrgId}");
 
                     foreach (var u in users)
                     {
-                        var newNoti = await _notiService.CreateNotificationAsync(u.UserId, rule.RuleId, message);
+                        var newNoti = await _notiService.CreateNotificationAsync(u.UserId, rule.RuleId, rule.OrgId, message);
                         if (newNoti != null)
                         {
-                            _logger.LogInformation($"Sending SignalR and Firebase alert to User {u.UserId} for Rule {rule.Name}");
+                            _logger.LogInformation($"Sending SignalR alert to User {u.UserId} for Rule {rule.Name}");
                             await _realtimeService.SendAlertSignalAsync(u.UserId, newNoti);
-                            
-                            // Push to Firebase for real-time mobile/web dashboard
-                            await _firebaseService.UpdateHubAlertAsync(rule.HubId, new
-                            {
-                                message = message,
-                                priority = rule.Priority,
-                                time = sensorData.RecordedAt,
-                                ruleName = rule.Name
-                            });
                         }
                     }
                 }
@@ -138,9 +138,9 @@ namespace SWD.BLL.Services
             return await _alertRepo.GetAllRulesAsync();
         }
 
-        public async Task<(List<AlertRule> Rules, int TotalCount)> GetAllRulesAsync(string? search, bool? isActive, string? priority, int? siteId, int? pageNumber, int? pageSize, string? sortBy = null, string? sortOrder = "asc")
+        public async Task<(List<AlertRule> Rules, int TotalCount)> GetAllRulesAsync(string? search, bool? isActive, string? priority, int? siteId, int? hubId, int? pageNumber, int? pageSize, string? sortBy = null, string? sortOrder = "asc")
         {
-            var rules = await _alertRepo.GetAllRulesAsync(search, isActive, priority, siteId, sortBy, sortOrder);
+            var rules = await _alertRepo.GetAllRulesAsync(search, isActive, priority, siteId, hubId, sortBy, sortOrder);
             var totalCount = rules.Count;
 
             if (pageNumber.HasValue && pageSize.HasValue)
