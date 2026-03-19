@@ -81,6 +81,8 @@ namespace SWD.API.Controllers
                     MaxVal = r.MaxVal,
                     NotificationMethod = r.NotificationMethod,
                     Priority = r.Priority,
+                    TypeId = r.TypeId,
+                    TypeName = r.SensorType?.TypeName,
                     IsActive = r.IsActive
                 }).ToList();
 
@@ -126,6 +128,8 @@ namespace SWD.API.Controllers
                     MaxVal = rule.MaxVal,
                     NotificationMethod = rule.NotificationMethod,
                     Priority = rule.Priority,
+                    TypeId = rule.TypeId,
+                    TypeName = rule.SensorType?.TypeName,
                     IsActive = rule.IsActive
                 };
                 
@@ -178,6 +182,7 @@ namespace SWD.API.Controllers
                     MaxVal = request.MaxVal,
                     NotificationMethod = request.NotificationMethod,
                     Priority = request.Priority,
+                    TypeId = request.TypeId,
                     IsActive = true
                 };
 
@@ -250,6 +255,9 @@ namespace SWD.API.Controllers
 
                 if (!string.IsNullOrWhiteSpace(request.Priority))
                     rule.Priority = request.Priority;
+
+                if (request.TypeId.HasValue)
+                    rule.TypeId = request.TypeId.Value;
 
                 if (request.IsActive.HasValue)
                     rule.IsActive = request.IsActive.Value;

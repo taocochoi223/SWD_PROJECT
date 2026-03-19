@@ -50,36 +50,51 @@ namespace SWD.BLL.Services
                 string unit = "";
                 string ruleName = rule.Name ?? "";
                 
-                // Identify which field to check based on Rule Name (case-insensitive)
-                if (ruleName.Contains("Temperature", StringComparison.OrdinalIgnoreCase) || 
-                    ruleName.Contains("Nhiệt độ", StringComparison.OrdinalIgnoreCase)) {
-                    if (root.TryGetProperty("temperature", out var val) || 
-                        root.TryGetProperty("Temperature", out val) || 
-                        root.TryGetProperty("v1", out val)) 
+                // Identify which field to check
+                // 1. Prioritize TypeId (New Logic: 1=Temp, 2=Humid, 3=Pressure)
+                if (rule.TypeId.HasValue)
+                {
+                    if (rule.TypeId == 1) // Temperature
                     {
-                        numericValue = GetSafeDouble(val);
+                        if (root.TryGetProperty("temperature", out var val) || root.TryGetProperty("Temperature", out val) || root.TryGetProperty("v1", out val))
+                            numericValue = GetSafeDouble(val);
+                        unit = "°C";
                     }
-                    unit = "°C";
+                    else if (rule.TypeId == 2) // Humidity
+                    {
+                        if (root.TryGetProperty("humidity", out var val) || root.TryGetProperty("Humidity", out val) || root.TryGetProperty("v2", out val))
+                            numericValue = GetSafeDouble(val);
+                        unit = "%";
+                    }
+                    else if (rule.TypeId == 3) // Pressure
+                    {
+                        if (root.TryGetProperty("pressure", out var val) || root.TryGetProperty("Pressure", out val) || root.TryGetProperty("v3", out val))
+                            numericValue = GetSafeDouble(val);
+                        unit = "hPa";
+                    }
                 }
-                else if (ruleName.Contains("Humidity", StringComparison.OrdinalIgnoreCase) || 
-                         ruleName.Contains("Độ ẩm", StringComparison.OrdinalIgnoreCase)) {
-                    if (root.TryGetProperty("humidity", out var val) || 
-                        root.TryGetProperty("Humidity", out val) || 
-                        root.TryGetProperty("v2", out val)) 
+                
+                // 2. Fallback to Name-based matching (Old Logic)
+                if (!numericValue.HasValue)
+                {
+                    if (ruleName.Contains("Temperature", StringComparison.OrdinalIgnoreCase) || ruleName.Contains("Nhiệt độ", StringComparison.OrdinalIgnoreCase))
                     {
-                        numericValue = GetSafeDouble(val);
+                        if (root.TryGetProperty("temperature", out var val) || root.TryGetProperty("Temperature", out val) || root.TryGetProperty("v1", out val))
+                            numericValue = GetSafeDouble(val);
+                        unit = "°C";
                     }
-                    unit = "%";
-                }
-                else if (ruleName.Contains("Pressure", StringComparison.OrdinalIgnoreCase) || 
-                         ruleName.Contains("Áp suất", StringComparison.OrdinalIgnoreCase)) {
-                    if (root.TryGetProperty("pressure", out var val) || 
-                        root.TryGetProperty("Pressure", out val) || 
-                        root.TryGetProperty("v3", out val)) 
+                    else if (ruleName.Contains("Humidity", StringComparison.OrdinalIgnoreCase) || ruleName.Contains("Độ ẩm", StringComparison.OrdinalIgnoreCase))
                     {
-                        numericValue = GetSafeDouble(val);
+                        if (root.TryGetProperty("humidity", out var val) || root.TryGetProperty("Humidity", out val) || root.TryGetProperty("v2", out val))
+                            numericValue = GetSafeDouble(val);
+                        unit = "%";
                     }
-                    unit = "hPa";
+                    else if (ruleName.Contains("Pressure", StringComparison.OrdinalIgnoreCase) || ruleName.Contains("Áp suất", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (root.TryGetProperty("pressure", out var val) || root.TryGetProperty("Pressure", out val) || root.TryGetProperty("v3", out val))
+                            numericValue = GetSafeDouble(val);
+                        unit = "hPa";
+                    }
                 }
 
                 if (!numericValue.HasValue) 
