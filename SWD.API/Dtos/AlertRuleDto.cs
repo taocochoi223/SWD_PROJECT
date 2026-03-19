@@ -13,6 +13,8 @@ namespace SWD.API.Dtos
         public double? MaxVal { get; set; }
         public string? NotificationMethod { get; set; }
         public string? Priority { get; set; }
+        public int? TypeId { get; set; }
+        public string? TypeName { get; set; }
         public bool? IsActive { get; set; }
     }
 }

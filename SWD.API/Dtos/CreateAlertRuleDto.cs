@@ -24,5 +24,6 @@ namespace SWD.API.Dtos
         public string NotificationMethod { get; set; } = "Email";
 
         public string Priority { get; set; } = "Warning";
+        public int? TypeId { get; set; }
     }
 }

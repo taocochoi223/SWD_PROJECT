@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SWD.DAL.Models;
 
@@ -11,9 +12,11 @@ using SWD.DAL.Models;
 namespace SWD.DAL.Migrations
 {
     [DbContext(typeof(IoTFinalDbContext))]
-    partial class IoTFinalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260319083640_UpdateAlertRuleWithType")]
+    partial class UpdateAlertRuleWithType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

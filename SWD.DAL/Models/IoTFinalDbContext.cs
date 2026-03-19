@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
@@ -76,6 +76,7 @@ public partial class IoTFinalDbContext : DbContext
             entity.Property(e => e.Priority).HasMaxLength(20);
             entity.Property(e => e.OrgId).HasColumnName("OrgID");
             entity.Property(e => e.HubId).HasColumnName("HubID");
+            entity.Property(e => e.TypeId).HasColumnName("TypeID");
 
             entity.HasOne(d => d.Organization).WithMany(p => p.AlertRules)
                 .HasForeignKey(d => d.OrgId)
@@ -86,6 +87,11 @@ public partial class IoTFinalDbContext : DbContext
                 .HasForeignKey(d => d.HubId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_AlertRule_Hub");
+
+            entity.HasOne(d => d.SensorType).WithMany(p => p.AlertRules)
+                .HasForeignKey(d => d.TypeId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_AlertRule_SensorType");
         });
 
         modelBuilder.Entity<Hub>(entity =>
