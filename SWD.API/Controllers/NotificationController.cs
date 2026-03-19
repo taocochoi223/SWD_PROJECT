@@ -197,7 +197,7 @@ namespace SWD.API.Controllers
                     else
                     {
                         // FALLBACK: SiteId NULL hoặc Rỗng -> Xem ĐƯỢC HẾT (Globally)
-                        // Giữ nguyên siteId và userId từ Query (có thể null để xem tất cả)
+                        // Không ép userId = currentUserId để họ thấy được cảnh báo của người khác/toàn hệ thống
                     }
                 }
                 else 
