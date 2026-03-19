@@ -19,7 +19,7 @@ namespace SWD.API.Controllers
         }
 
         /// <summary>
-        /// Get All Sensors - With optional filters
+        /// Get Sensors - With optional filters
         /// </summary>
         /// <param name="hub_id">Lọc theo Hub ID</param>
         /// <param name="type">Lọc theo loại cảm biến (TypeId)</param>

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SWD.API.Dtos;
 using SWD.BLL.Interfaces;
@@ -17,7 +17,7 @@ namespace SWD.API.Controllers
         {
             _hubService = hubService;
         }
-        /// <summary>Get all hubs</summary>
+        /// <summary>Get Hubs - With optional filters</summary>
         /// <param name="search">Tìm kiếm theo tên hoặc địa chỉ MAC</param>
         /// <param name="isOnline">Lọc theo trạng thái online/offline</param>
         /// <param name="pageNumber">Số trang (bắt đầu từ 1). Chỉ phân trang khi truyền cả pageNumber và pageSize</param>

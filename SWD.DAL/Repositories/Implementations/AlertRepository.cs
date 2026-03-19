@@ -35,6 +35,7 @@ namespace SWD.DAL.Repositories.Implementations
             var query = _context.AlertRules
                 .Include(r => r.Hub)
                 .ThenInclude(h => h.Site)
+                .Include(r => r.Organization)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
@@ -84,7 +85,10 @@ namespace SWD.DAL.Repositories.Implementations
 
         public async Task<AlertRule?> GetRuleByIdAsync(int ruleId)
         {
-            return await _context.AlertRules.FindAsync(ruleId);
+            return await _context.AlertRules
+                .Include(r => r.Hub)
+                .Include(r => r.Organization)
+                .FirstOrDefaultAsync(r => r.RuleId == ruleId);
         }
 
         public Task UpdateRuleAsync(AlertRule rule)
