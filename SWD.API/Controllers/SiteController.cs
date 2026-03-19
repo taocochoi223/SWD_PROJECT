@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SWD.API.Dtos;
 using SWD.BLL.Interfaces;
@@ -20,7 +20,7 @@ namespace SWD.API.Controllers
         }
 
         /// <summary>
-        /// Get All Sites
+        /// Get Sites - With optional filters
         /// </summary>
         /// <param name="search">Tìm kiếm theo tên hoặc ID</param>
         /// <param name="orgId">Lọc theo tổ chức (OrgId)</param>

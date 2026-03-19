@@ -136,7 +136,7 @@ namespace SWD.API.Controllers
         }
 
         /// <summary>
-        /// Get All Users
+        /// Get Users - With optional filters
         /// </summary>
         /// <param name="search">Tìm kiếm theo tên hoặc email</param>
         /// <param name="isActive">Lọc theo trạng thái active/inactive</param>

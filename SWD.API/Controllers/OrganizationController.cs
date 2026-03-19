@@ -21,7 +21,7 @@ namespace SWD.API.Controllers
         }
 
         /// <summary>
-        /// Get all organizations
+        /// Get Organizations - With optional filters
         /// </summary>
         /// <param name="search">Tìm kiếm theo tên hoặc mô tả</param>
         /// <param name="pageNumber">Số trang (bắt đầu từ 1). Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
