@@ -27,7 +27,7 @@ namespace SWD.API.Controllers
         /// Create User Account - Admin creates account for a new user
         /// </summary>
         [HttpPost]
-        [Authorize(Roles = "Admin,ADMIN")]
+        [Authorize(Roles = "Admin,ADMIN,Manager,MANAGER")]
         public async Task<IActionResult> CreateUserAccount([FromBody] RegisterUserDto request)
         {
             // Validate email
@@ -143,9 +143,9 @@ namespace SWD.API.Controllers
         /// <param name="pageNumber">Số trang (bắt đầu từ 1). Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
         /// <param name="pageSize">Số lượng mỗi trang. Chỉ phân trang khi truyền cả pageNumber và pageSize</param>
         /// <param name="sortBy">Sắp xếp theo field: fullName | email | isActive | roleId (default: userId)</param>
-        /// <param name="sortOrder">Thứ tự sắp xếp: asc | desc (default: asc)</param>
+        /// <param name="sortOrder">Thứ tự xếp xếp: asc | desc (default: asc)</param>
         [HttpGet]
-        [Authorize(Roles = "Admin,ADMIN")]
+        [Authorize(Roles = "Admin,ADMIN,Manager,MANAGER")]
         public async Task<IActionResult> GetAllUsersAsync(
             [FromQuery] string? search = null,
             [FromQuery] bool? isActive = null,
@@ -161,7 +161,19 @@ namespace SWD.API.Controllers
                 if (pageSize.HasValue && pageSize.Value < 1)
                     return BadRequest(new { message = "pageSize phải lớn hơn hoặc bằng 1" });
 
-                var (users, totalCount) = await _userService.GetAllUsersAsync(search, isActive, pageNumber, pageSize, sortBy, sortOrder);
+                // Lọc theo SiteId cho Manager
+                int? siteId = null;
+                var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value?.ToUpper();
+                if (userRole == "MANAGER")
+                {
+                    var userSiteIdClaim = User.FindFirst("SiteId")?.Value;
+                    if (!string.IsNullOrEmpty(userSiteIdClaim) && int.TryParse(userSiteIdClaim, out int assignedSiteId))
+                    {
+                        siteId = assignedSiteId;
+                    }
+                }
+
+                var (users, totalCount) = await _userService.GetAllUsersAsync(search, isActive, pageNumber, pageSize, sortBy, sortOrder, siteId);
 
                 int? totalPages = (pageNumber.HasValue && pageSize.HasValue)
                     ? (int)Math.Ceiling((double)totalCount / pageSize.Value)
@@ -298,7 +310,7 @@ namespace SWD.API.Controllers
         /// Activate User
         /// </summary>
         [HttpPut("{id}/activate")]
-        [Authorize(Roles = "Admin,ADMIN")]
+        [Authorize(Roles = "Admin,ADMIN,Manager,MANAGER")]
         public async Task<IActionResult> ActivateUserAsync(int id)
         {
             try
@@ -334,7 +346,7 @@ namespace SWD.API.Controllers
         /// Deactivate User
         /// </summary>
         [HttpPut("{id}/deactivate")]
-        [Authorize(Roles = "Admin,ADMIN")]
+        [Authorize(Roles = "Admin,ADMIN,Manager,MANAGER")]
         public async Task<IActionResult> DeactivateUserAsync(int id)
         {
             try

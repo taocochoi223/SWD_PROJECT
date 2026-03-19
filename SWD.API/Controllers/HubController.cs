@@ -46,6 +46,7 @@ namespace SWD.API.Controllers
                 var siteIdClaim = User.FindFirst("SiteId")?.Value;
                 int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
 
+                // Nếu Manager có SiteId -> Ép lọc theo Site đó. Nếu không có (SiteId rỗng) -> Xem được hết.
                 var (hubs, totalCount) = await _hubService.GetAllHubsAsync(search, isOnline, userSiteId, pageNumber, pageSize, sortBy, sortOrder);
 
                 int? totalPages = (pageNumber.HasValue && pageSize.HasValue)

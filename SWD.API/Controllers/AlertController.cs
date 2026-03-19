@@ -53,7 +53,7 @@ namespace SWD.API.Controllers
                     var userSiteIdClaim = User.FindFirst("SiteId")?.Value;
                     if (!string.IsNullOrEmpty(userSiteIdClaim) && int.TryParse(userSiteIdClaim, out int assignedSiteId))
                     {
-                        siteId = assignedSiteId;
+                        siteId = assignedSiteId; // Nếu có Site -> Ép lọc theo Site đó. Nếu rỗng -> siteId = null (xem được hết).
                     }
                 }
 

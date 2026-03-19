@@ -39,9 +39,19 @@ namespace SWD.API.Controllers
         {
             try
             {
+                var siteIdClaim = User.FindFirst("SiteId")?.Value;
+                int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
+
                 var (sites, _) = await _siteService.GetAllSitesAsync();
-                var (hubs, _) = await _hubService.GetAllHubsAsync();
-                var (sensors, _) = await _sensorService.GetAllSensorsAsync();
+                var (hubs, _) = await _hubService.GetAllHubsAsync(search: null, isOnline: null, siteId: userSiteId);
+                var (sensors, _) = await _sensorService.GetAllSensorsAsync(hubId: null, typeId: null, search: null, status: null, siteId: userSiteId);
+                
+                // Nếu có SiteId thì chỉ đếm trong Site đó
+                if (userSiteId.HasValue)
+                {
+                    sites = sites.Where(s => s.SiteId == userSiteId.Value).ToList();
+                }
+
                 var alerts = new List<object>(); // Placeholder as AlertHistory is removed
                 // var alerts = await _alertService.GetAlertsWithFiltersAsync("Active", null);
 
@@ -50,7 +60,7 @@ namespace SWD.API.Controllers
                     message = "Lấy thống kê dashboard thành công",
                     total_sites = sites.Count,
                     total_hubs = hubs.Count,
-                    active_sensors = sensors.Count(s => s.Status == "Active"),
+                    active_sensors = sensors.Count(s => s.Status == "Active" || s.Status == "Online"),
                     pending_alerts = 0
                 };
 
@@ -70,7 +80,16 @@ namespace SWD.API.Controllers
         {
             try
             {
+                var siteIdClaim = User.FindFirst("SiteId")?.Value;
+                int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
+
                 var sites = await _siteService.GetSiteHierarchyAsync();
+                
+                // Lọc hierarchy cho Manager nếu họ gán cứng SiteId
+                if (userSiteId.HasValue)
+                {
+                    sites = sites.Where(s => s.SiteId == userSiteId.Value).ToList();
+                }
                 
                 var siteDtos = sites.Select(s => new SiteDashboardDto
                 {
@@ -116,6 +135,15 @@ namespace SWD.API.Controllers
                 // Validate siteId
                 if (siteId <= 0)
                     return BadRequest(new { message = "SiteId không hợp lệ" });
+
+                // Security check for Managers
+                var siteIdClaim = User.FindFirst("SiteId")?.Value;
+                int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
+
+                if (userSiteId.HasValue && userSiteId.Value != siteId)
+                {
+                    return StatusCode(403, new { message = "Bạn không có quyền truy cập dữ liệu của địa điểm này" });
+                }
 
                 var s = await _siteService.GetSiteHierarchyByIdAsync(siteId);
                 if (s == null)
@@ -177,7 +205,7 @@ namespace SWD.API.Controllers
                 if (hub == null)
                     return NotFound(new { message = "Không tìm thấy Hub với ID: " + id });
 
-                // KIỂM TRA PHÂN QUYỀN
+                // KIỂM TRA PHÂN QUYỀN: Chỉ chặn nếu user có SiteId mà Hub đó không thuộc Site đó
                 var siteIdClaim = User.FindFirst("SiteId")?.Value;
                 int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
 
@@ -230,15 +258,36 @@ namespace SWD.API.Controllers
         {
             try
             {
-                // Lấy UserId từ Token
-                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userIdClaim))
-                    return Unauthorized(new { message = "Không tìm thấy thông tin định danh người dùng" });
-
-                int userId = int.Parse(userIdClaim);
-                var notis = await _notiService.GetUserNotificationsAsync(userId);
+                var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value?.ToUpper();
+                var siteIdClaim = User.FindFirst("SiteId")?.Value;
+                int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
                 
-                var alertData = notis.Take(limit).Select(n => new {
+                int? targetUserId = null;
+                int? targetSiteId = userSiteId;
+
+                // Nếu là STAFF hoặc MANAGER có SiteId thì mới lọc cá nhân
+                if (userRole == "STAFF")
+                {
+                    var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+                                      ?? User.FindFirst("UserId")?.Value;
+                    targetUserId = int.Parse(userIdClaim!);
+                }
+                else if (userRole == "MANAGER" && targetSiteId.HasValue)
+                {
+                    // Manager có SiteId thì xem của Site đó (mặc định)
+                }
+                else if (userRole == "MANAGER" && !targetSiteId.HasValue)
+                {
+                    // Manager KHÔNG SiteId -> Xem hết (targetUserId = null, targetSiteId = null)
+                    targetSiteId = null; // Ensure it's null if not set
+                }
+
+                var (items, _) = await _notiService.GetNotificationsHistoryAsync(
+                    userId: targetUserId, 
+                    siteId: targetSiteId, 
+                    pageSize: limit);
+                
+                var alertData = items.Select(n => new {
                     id = n.NotiId,
                     location = $"{n.Rule?.Hub?.Site?.Name} - {n.Rule?.Hub?.Name}",
                     value = ExtractValueFromMessage(n.Message),
