@@ -58,7 +58,13 @@ namespace SWD.API.Controllers
                     Name = s.Name,
                     Address = s.Address,
                     GeoLocation = s.GeoLocation,
-                    HubCount = s.Hubs?.Count ?? 0
+                    HubCount = s.Hubs?.Count ?? 0,
+                    Hubs = s.Hubs?.Select(h => new HubSummaryDto
+                    {
+                        HubId = h.HubId,
+                        Name = h.Name,
+                        IsOnline = h.IsOnline
+                    }).ToList() ?? new List<HubSummaryDto>()
                 }).ToList();
 
                 return Ok(new
@@ -157,7 +163,13 @@ namespace SWD.API.Controllers
                     Name = site.Name,
                     Address = site.Address,
                     GeoLocation = site.GeoLocation,
-                    HubCount = site.Hubs?.Count ?? 0
+                    HubCount = site.Hubs?.Count ?? 0,
+                    Hubs = site.Hubs?.Select(h => new HubSummaryDto
+                    {
+                        HubId = h.HubId,
+                        Name = h.Name,
+                        IsOnline = h.IsOnline
+                    }).ToList() ?? new List<HubSummaryDto>()
                 };
 
                 return Ok(new { message = "Lấy thông tin địa điểm thành công", data = siteDto });
