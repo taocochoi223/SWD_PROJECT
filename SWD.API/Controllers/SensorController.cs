@@ -57,16 +57,23 @@ namespace SWD.API.Controllers
                     ? (int)Math.Ceiling((double)totalCount / pageSize.Value)
                     : null;
 
-                var sensorDtos = sensors.Select(s => new SensorDto
-                {
-                    SensorId = s.SensorId,
-                    HubId = s.HubId,
-                    HubName = s.Hub?.Name,
-                    TypeId = s.TypeId,
-                    TypeName = s.Type?.TypeName,
-                    SensorName = s.Name,
-                    CurrentValue = 0,
-                    Status = s.Status
+                var sensorDtos = sensors.Select(s => {
+                    var rule = s.Hub?.AlertRules?.FirstOrDefault(r => r.TypeId == s.TypeId && (r.IsActive ?? true));
+                    return new SensorDto
+                    {
+                        SensorId = s.SensorId,
+                        HubId = s.HubId,
+                        HubName = s.Hub?.Name,
+                        TypeId = s.TypeId,
+                        TypeName = s.Type?.TypeName,
+                        SensorName = s.Name,
+                        CurrentValue = 0,
+                        Status = s.Status,
+                        RuleId = rule?.RuleId,
+                        RuleName = rule?.Name,
+                        MinVal = rule?.MinVal,
+                        MaxVal = rule?.MaxVal
+                    };
                 }).ToList();
 
                 return Ok(new

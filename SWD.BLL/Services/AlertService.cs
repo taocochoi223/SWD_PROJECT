@@ -184,6 +184,17 @@ namespace SWD.BLL.Services
 
         public async Task CreateRuleAsync(AlertRule rule)
         {
+            // NEW: Check if this Hub already has a rule for this Sensor Type
+            if (rule.TypeId.HasValue)
+            {
+                var existingRules = await _alertRepo.GetActiveRulesByHubIdAsync(rule.HubId);
+                var duplicate = existingRules.FirstOrDefault(r => r.TypeId == rule.TypeId && r.IsActive == true);
+                if (duplicate != null)
+                {
+                    throw new Exception($"Hub này đã có quy tắc '{duplicate.Name}' cho loại cảm biến này rồi. Hãy cập nhật quy tắc cũ thay vì tạo mới.");
+                }
+            }
+
             await _alertRepo.CreateRuleAsync(rule);
             await _alertRepo.SaveChangesAsync();
         }
