@@ -178,36 +178,33 @@ namespace SWD.API.Controllers
                 }
                 else if (userRole == "MANAGER" || userRole == "STAFF")
                 {
-                    // Staff/Manager can only see history of their assigned Site
-                    if (string.IsNullOrEmpty(userSiteIdClaim) || !int.TryParse(userSiteIdClaim, out int assignedSiteId))
+                    // Nếu đã có gán khu vực (SiteId) -> Ép lọc theo khu vực đó
+                    if (!string.IsNullOrEmpty(userSiteIdClaim) && int.TryParse(userSiteIdClaim, out int assignedSiteId))
                     {
-                        return Ok(new { 
-                            message = "Tài khoản của bạn chưa được gán khu vực quản lý", 
-                            data = new List<NotificationDto>(), 
-                            totalCount = 0 
-                        });
-                    }
-                    
-                    // Force their assigned site filtering
-                    siteId = assignedSiteId;
+                        siteId = assignedSiteId;
 
-                    // Security: STAFF can ONLY see their own notifications
-                    // MANAGER can see their own by default, or others in their site if they pass userId
-                    // (But since siteId is forced, they can't see other sites)
-                    if (userRole == "STAFF")
-                    {
-                        userId = currentUserId;
+                        // Security: STAFF can ONLY see their own notifications within their site
+                        if (userRole == "STAFF")
+                        {
+                            userId = currentUserId;
+                        }
+                        // MANAGER can see others in their site if they pass userId, otherwise own by default
+                        else if (!userId.HasValue)
+                        {
+                            userId = currentUserId;
+                        }
                     }
-                    else if (!userId.HasValue)
+                    else
                     {
-                        userId = currentUserId;
+                        // FALLBACK: SiteId NULL hoặc Rỗng -> Xem ĐƯỢC HẾT (Globally)
+                        // Giữ nguyên siteId và userId từ Query (có thể null để xem tất cả)
                     }
                 }
                 else 
                 {
-                    // Other roles: Only see their own notifications
+                    // Other roles (Regular Users): Only see their own notifications
                     userId = currentUserId;
-                    siteId = null; // Don't allow them to filter by site if they are just regular users
+                    siteId = null;
                 }
 
                 var (items, totalCount) = await _notiService.GetNotificationsHistoryAsync(
