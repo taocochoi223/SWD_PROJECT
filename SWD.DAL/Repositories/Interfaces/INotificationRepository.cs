@@ -1,4 +1,4 @@
-﻿using SWD.DAL.Models;
+using SWD.DAL.Models;
 
 //ALOALO chú ý mấy thằng nhóc: code này dùng cho các thông báo (Notification) trong hệ thống quản lý sự cố (SWD).
 //Nó định nghĩa các phương thức để tạo, lấy, đánh dấu đã đọc thông báo và tìm người dùng cần nhận thông báo dựa trên site cụ thể.
@@ -24,7 +24,7 @@ namespace SWD.DAL.Repositories.Interfaces
         Task<(List<Notification> Items, int TotalCount)> GetNotificationsHistoryAsync(
             int? userId = null,
             int? siteId = null,
-            int? sensorId = null,
+            int? hubId = null,
             string? severity = null,
             DateTime? fromDate = null,
             DateTime? toDate = null,

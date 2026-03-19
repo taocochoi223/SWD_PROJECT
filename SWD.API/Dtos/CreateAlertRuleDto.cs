@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace SWD.API.Dtos
 {
@@ -14,8 +14,8 @@ namespace SWD.API.Dtos
         public string Name { get; set; }
 
         [Required]
-        [RegularExpression("MinMax|Trend", ErrorMessage = "ConditionType must be 'MinMax' or 'Trend'")]
-        public string ConditionType { get; set; } // 'MinMax', 'Trend'
+        [RegularExpression("MinMax|Range|Greater|Less|Trend", ErrorMessage = "ConditionType must be 'MinMax', 'Range', 'Greater', 'Less' or 'Trend'")]
+        public string ConditionType { get; set; } // 'MinMax', 'Range', 'Greater', 'Less', 'Trend'
 
         public double? MinVal { get; set; }
 

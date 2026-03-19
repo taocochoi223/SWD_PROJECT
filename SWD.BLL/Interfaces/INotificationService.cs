@@ -1,4 +1,4 @@
-﻿using SWD.DAL.Models;
+using SWD.DAL.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +9,7 @@ namespace SWD.BLL.Interfaces
 {
     public interface INotificationService
     {
-        Task<Notification> CreateNotificationAsync(int userId, int ruleId, string message);
+        Task<Notification> CreateNotificationAsync(int userId, int ruleId, int orgId, string message);
         Task<List<Notification>> GetUserNotificationsAsync(int userId);
         Task MarkAsReadAsync(long notificationId, int? userId = null);
         Task<(List<Notification> Items, int TotalCount)> GetNotificationsHistoryAsync(
