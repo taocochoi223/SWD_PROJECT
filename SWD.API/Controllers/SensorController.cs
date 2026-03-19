@@ -51,6 +51,7 @@ namespace SWD.API.Controllers
                 var siteIdClaim = User.FindFirst("SiteId")?.Value;  
                 int? userSiteId = !string.IsNullOrEmpty(siteIdClaim) ? int.Parse(siteIdClaim) : null;
 
+                // Nếu SiteId Rỗng -> Xem được TẤT CẢ các Sensor của mọi Site.
                 var (sensors, totalCount) = await _sensorService.GetAllSensorsAsync(hub_id, type, search, status, userSiteId, pageNumber, pageSize, sortBy, sortOrder);
 
                 int? totalPages = (pageNumber.HasValue && pageSize.HasValue)

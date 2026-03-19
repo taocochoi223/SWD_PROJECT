@@ -6,5 +6,6 @@ namespace SWD.BLL.Interfaces
         Task UpdateHubStatusAsync(int hubId, bool isOnline);
         Task UpdateHubDataAsync(int hubId, object data);
         Task UpdateHubAlertAsync(int hubId, object alert);
+        Task DeleteHubAlertAsync(int hubId);
     }
 }

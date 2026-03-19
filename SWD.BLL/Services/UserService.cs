@@ -34,9 +34,9 @@ namespace SWD.BLL.Services
             return await _userRepo.GetAllUsersAsync();
         }
 
-        public async Task<(List<User> Users, int TotalCount)> GetAllUsersAsync(string? search, bool? isActive, int? pageNumber, int? pageSize, string? sortBy = null, string? sortOrder = "asc")
+        public async Task<(List<User> Users, int TotalCount)> GetAllUsersAsync(string? search, bool? isActive, int? pageNumber, int? pageSize, string? sortBy = null, string? sortOrder = "asc", int? siteId = null)
         {
-            var users = await _userRepo.GetAllUsersAsync(search, isActive, sortBy, sortOrder);
+            var users = await _userRepo.GetAllUsersAsync(search, isActive, sortBy, sortOrder, siteId);
             var totalCount = users.Count;
 
             if (pageNumber.HasValue && pageSize.HasValue)

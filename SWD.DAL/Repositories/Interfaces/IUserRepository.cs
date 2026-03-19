@@ -10,7 +10,7 @@ namespace SWD.DAL.Repositories.Interfaces
         Task<User?> GetUserByEmailAsync(string email);
         Task<User?> GetUserByIdAsync(int userId);
         Task<List<User>> GetAllUsersAsync();
-        Task<List<User>> GetAllUsersAsync(string? search, bool? isActive, string? sortBy = null, string? sortOrder = "asc");
+        Task<List<User>> GetAllUsersAsync(string? search, bool? isActive, string? sortBy = null, string? sortOrder = "asc", int? siteId = null);
         Task AddUserAsync(User user);
         Task UpdateUserAsync(User user);
         Task SaveChangesAsync();

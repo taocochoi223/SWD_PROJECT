@@ -46,6 +46,17 @@ namespace SWD.API.Controllers
 
                 var (sites, totalCount) = await _siteService.GetAllSitesAsync(search, orgId, pageNumber, pageSize, sortBy, sortOrder);
 
+                // Role-based filtering: Manager with assigned SiteId only sees that Site
+                var siteIdClaim = User.FindFirst("SiteId")?.Value;
+                if (User.IsInRole("Manager") || User.IsInRole("MANAGER"))
+                {
+                    if (!string.IsNullOrEmpty(siteIdClaim) && int.TryParse(siteIdClaim, out int assignedSiteId))
+                    {
+                        sites = sites.Where(s => s.SiteId == assignedSiteId).ToList();
+                        totalCount = sites.Count; // Cập nhật lại totalCount sau khi lọc
+                    }
+                }
+
                 int? totalPages = (pageNumber.HasValue && pageSize.HasValue)
                     ? (int)Math.Ceiling((double)totalCount / pageSize.Value)
                     : null;

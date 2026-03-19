@@ -154,6 +154,12 @@ namespace SWD.BLL.Services
                         }
                     }
                 }
+                else
+                {
+                     // [CLEANUP] Giá trị quay về bình thường -> Xóa Alert rác trên Firebase
+                    _ = _firebaseService.DeleteHubAlertAsync(rule.HubId);
+                }
+
             }
         }
 

@@ -93,6 +93,13 @@ namespace SWD.API.Services
                 hub.IsOnline = false;
                 await hubService.UpdateHubAsync(hub);
                 await _firebaseService.UpdateHubStatusAsync(hub.HubId, false);
+                
+                // [CLEANUP] Ép xóa Alert trên Firebase khi phát hiện Hub đã Offline
+                try {
+                    await _firebaseService.DeleteHubAlertAsync(hub.HubId);
+                    _logger.LogInformation($"StatusMonitorService: Hub {hub.HubId} Offline -> Cleared stale alerts on Firebase.");
+                } catch { /* Silent fail to continue monitor */ }
+
                 await BroadcastHubStatusChange(hub.HubId, false, hub.LastHandshake);
                 var lastSeen = hub.LastHandshake.HasValue
                     ? $"{(vietnamNow - hub.LastHandshake.Value).TotalSeconds:F0}s ago"

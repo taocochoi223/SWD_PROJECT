@@ -141,5 +141,24 @@ namespace SWD.API.Services
                 _logger.LogError(ex, $"[Firebase] Error updating status for Hub: {hubId}");
             }
         }
+
+        public async Task DeleteHubAlertAsync(int hubId)
+        {
+            try
+            {
+                await _firebaseClient
+                    .Child("Hubs")
+                    .Child(hubId.ToString())
+                    .Child("Alert")
+                    .DeleteAsync();
+
+                _logger.LogInformation($"[Firebase] Deleted stale alert for Hub: {hubId}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"[Firebase] Error deleting alert from Firebase for Hub: {hubId}");
+            }
+        }
     }
 }
+

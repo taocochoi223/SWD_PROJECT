@@ -43,7 +43,7 @@ namespace SWD.DAL.Repositories.Implementations
                 .ToListAsync();
         }
 
-        public async Task<List<User>> GetAllUsersAsync(string? search, bool? isActive, string? sortBy = null, string? sortOrder = "asc")
+        public async Task<List<User>> GetAllUsersAsync(string? search, bool? isActive, string? sortBy = null, string? sortOrder = "asc", int? siteId = null)
         {
             var query = _context.Users
                 .Include(u => u.Site)
@@ -63,6 +63,12 @@ namespace SWD.DAL.Repositories.Implementations
             {
                 query = query.Where(u => u.IsActive == isActive.Value);
             }
+
+            if (siteId.HasValue)
+            {
+                query = query.Where(u => u.SiteId == siteId.Value);
+            }
+
 
             bool isDesc = sortOrder?.ToLower() == "desc";
             query = sortBy?.ToLower() switch {
